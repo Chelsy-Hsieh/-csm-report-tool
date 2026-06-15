@@ -820,11 +820,11 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
   if(yoy){
     svg+=`<rect x="${pl}" y="${legendY-9}" width="9" height="8" rx="2" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1"/>`;
     svg+=`<text x="${pl+13}" y="${legendY}" font-size="9" fill="#7A756E">Y1 註冊</text>`;
-    svg+=`<circle cx="${pl+60}" cy="${legendY-4}" r="3.5" fill="#D97706"/>`;
+    svg+=`<circle cx="${pl+60}" cy="${legendY-4}" r="3.5" fill="#007A70"/>`;
     svg+=`<text x="${pl+67}" y="${legendY}" font-size="9" fill="#7A756E">Y1 完課</text>`;
-    svg+=`<rect x="${pl+115}" y="${legendY-9}" width="9" height="8" rx="2" fill="rgba(124,58,237,0.15)" stroke="#7C3AED" stroke-width="1.1"/>`;
+    svg+=`<rect x="${pl+115}" y="${legendY-9}" width="9" height="8" rx="2" fill="#FEF3C7" stroke="#D97706" stroke-width="1.1"/>`;
     svg+=`<text x="${pl+128}" y="${legendY}" font-size="9" fill="#7A756E">Y2 註冊</text>`;
-    svg+=`<circle cx="${pl+178}" cy="${legendY-4}" r="3.5" fill="#059669"/>`;
+    svg+=`<circle cx="${pl+178}" cy="${legendY-4}" r="3.5" fill="#B45309"/>`;
     svg+=`<text x="${pl+185}" y="${legendY}" font-size="9" fill="#7A756E">Y2 完課</text>`;
   } else {
     svg+=`<rect x="${pl}" y="${legendY-9}" width="9" height="8" rx="2" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1"/>`;
@@ -842,15 +842,16 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
       const x1=x-bw/2-gap, x2=x+gap/2;
       const rv1=regVals[i], rv2=regVals2[i];
       const cv1=compVals[i], cv2=compVals2[i];
+      // Y1: teal family, Y2: amber family
       svg+=`<rect x="${x1}" y="${yPos(rv1)}" width="${bw}" height="${cH-(yPos(rv1)-pt)}" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1" rx="2"/>`;
       if(rv1>0) svg+=`<text x="${x1+bw/2}" y="${yPos(rv1)-4}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#00968A">${rv1}</text>`;
-      svg+=`<rect x="${x2}" y="${yPos(rv2)}" width="${bw}" height="${cH-(yPos(rv2)-pt)}" fill="rgba(124,58,237,0.12)" stroke="#7C3AED" stroke-width="1.1" rx="2"/>`;
-      if(rv2>0) svg+=`<text x="${x2+bw/2}" y="${yPos(rv2)-4}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#7C3AED">${rv2}</text>`;
+      svg+=`<rect x="${x2}" y="${yPos(rv2)}" width="${bw}" height="${cH-(yPos(rv2)-pt)}" fill="#FEF3C7" stroke="#D97706" stroke-width="1.1" rx="2"/>`;
+      if(rv2>0) svg+=`<text x="${x2+bw/2}" y="${yPos(rv2)-4}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#D97706">${rv2}</text>`;
       const cx1=x1+bw/2, cx2=x2+bw/2;
       if(i===0){lp1=`M${cx1},${yPos(cv1)}`;lp2=`M${cx2},${yPos(cv2)}`;}
       else{lp1+=` L${cx1},${yPos(cv1)}`;lp2+=` L${cx2},${yPos(cv2)}`;}
-      if(cv1>0) svg+=`<text x="${cx1}" y="${yPos(cv1)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#D97706">${cv1}</text>`;
-      if(cv2>0) svg+=`<text x="${cx2}" y="${yPos(cv2)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#059669">${cv2}</text>`;
+      if(cv1>0) svg+=`<text x="${cx1}" y="${yPos(cv1)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#007A70">${cv1}</text>`;
+      if(cv2>0) svg+=`<text x="${cx2}" y="${yPos(cv2)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#B45309">${cv2}</text>`;
       const lbl=m+'月';
       svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
     } else {
@@ -863,17 +864,18 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
       svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
     }
   });
-  svg+=`<path d="${lp1}" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // Y1 line: deep teal; Y2 line: deep amber
+  svg+=`<path d="${lp1}" fill="none" stroke="#007A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
   months.forEach((m,i)=>{
     const x=xPos(i);
     const cx=yoy?x-Math.min(barW*0.85,(cW/months.length)*0.38)/2-Math.min(barW*0.85,(cW/months.length)*0.38)*0.15:x;
-    svg+=`<circle cx="${cx}" cy="${yPos(compVals[i])}" r="3" fill="#D97706"/>`;
+    svg+=`<circle cx="${cx}" cy="${yPos(compVals[i])}" r="3" fill="#007A70"/>`;
   });
   if(yoy&&lp2){
-    svg+=`<path d="${lp2}" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    svg+=`<path d="${lp2}" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
     months.forEach((m,i)=>{
       const x=xPos(i), bw=Math.min(barW*0.85,(cW/months.length)*0.38), gap=bw*0.3, cx2=x+gap/2+bw/2;
-      svg+=`<circle cx="${cx2}" cy="${yPos(compVals2[i])}" r="3" fill="#059669"/>`;
+      svg+=`<circle cx="${cx2}" cy="${yPos(compVals2[i])}" r="3" fill="#B45309"/>`;
     });
   }
   svg+='</svg>';
