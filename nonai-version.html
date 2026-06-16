@@ -413,6 +413,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
         <label class="field-check"><input type="checkbox" id="f-comprate" checked onchange="updateFields()"><span class="field-check-label">整體完課率</span></label>
         <label class="field-check"><input type="checkbox" id="f-avgreg" checked onchange="updateFields()"><span class="field-check-label">人均註冊數</span></label>
         <label class="field-check"><input type="checkbox" id="f-avgcomp" checked onchange="updateFields()"><span class="field-check-label">人均完課數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-totalhr" checked onchange="updateFields()"><span class="field-check-label">學習總時數</span></label>
         <label class="field-check"><input type="checkbox" id="f-avghr" checked onchange="updateFields()"><span class="field-check-label">人均學習時數</span></label>
       </div>
     </div>
@@ -644,9 +645,12 @@ function computeMetrics(learnersRaw, coursesRaw) {
   const avgRegPerLearner=(totalReg/Math.max(uniqueLearners,1)).toFixed(1);
   const avgCompPerLearner=(totalComp/Math.max(uniqueLearners,1)).toFixed(1);
 
+  // 學習總時數：所有人觀看時間加總（小時）
+  const totalHr = (learnersRaw.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60).toFixed(1);
+
   return {
     activatedCount:activated.length, nonRemovedCount:nonRemoved.length, activationRate,
-    totalReg,totalComp,overallCompRate,uniqueLearners,
+    totalReg,totalComp,overallCompRate,uniqueLearners,totalHr,
     avgRegPerLearner,avgCompPerLearner,avgHrPerLearner,
     monthlyReg,monthlyComp,catMap,catWatchMap,allCourses
   };
@@ -699,14 +703,14 @@ function getDeptStats(learnersRaw, coursesRaw, deptLevel=1) {
         avgComp:(rows.reduce((s,r)=>s+(Number(r['完成課程數量'])||0),0)/Math.max(nValid,1)).toFixed(1),
         avgHr:(rows.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/Math.max(nValid,1)/60).toFixed(1),
         zeroCount:(()=>{
-          // All 啟用+未啟用 in this dept with 觀看時間=0
+          // All 啟用+未啟用 in this dept with 註冊課程數量=0
           const deptLearners=learnersRaw.filter(r=>{
             const st=r['員工使用狀態'];
             if(st==='已移除'||st==='已停用'||st==='停用') return false;
             const d=getDeptName(r['員工部門'],deptLevel);
             return d===dept;
           });
-          return deptLearners.filter(r=>(Number(r['觀看時間（分）'])||0)===0).length;
+          return deptLearners.filter(r=>(Number(r['註冊課程數量'])||0)===0).length;
         })(),
         catCounts:deptCatMap[dept]||{},
         subcatCounts:deptSubcatMap[dept]||{}
@@ -954,6 +958,17 @@ function catColor(catName, idx) {
   return ENT_CAT_COLORS[idx%6];
 }
 
+function chunkRows(items, maxCols) {
+  let out='';
+  for(let i=0;i<items.length;i+=maxCols){
+    const chunk=items.slice(i,i+maxCols);
+    const cols=chunk.length;
+    const centerStyle=cols<maxCols?`max-width:${Math.round(cols/maxCols*100)}%;margin-left:auto;margin-right:auto`:'';
+    out+=`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:12px;margin-bottom:12px;${centerStyle}">${chunk.join('')}</div>`;
+  }
+  return out;
+}
+
 function renderKPIs(m1, m2, y1label, y2label) {
   const yoy=modules.yoy&&m2;
   let html='';
@@ -971,24 +986,28 @@ function renderKPIs(m1, m2, y1label, y2label) {
   if(isOn('f-totalcomp')) kpis1.push(yoy
     ? kpiYoY('完成課程總數',m1.totalComp.toLocaleString(),'筆',m2.totalComp.toLocaleString(),'筆',y1label,y2label)
     : kpiCard('完成課程總數',m1.totalComp.toLocaleString(),'筆',''));
+  if(isOn('f-totalhr')) kpis1.push(yoy
+    ? kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label)
+    : kpiCard('學習總時數',m1.totalHr,'hr','所有學員觀看時間加總'));
   if(isOn('f-comprate')&&!yoy) kpis1.push(kpiCard('整體完課率',m1.overallCompRate,'%','完成 / 已註冊課程',true));
   if(yoy){
     // YoY mode: row1 max 4 cols (unique, activation, totalreg, totalcomp)
     // row2: comprate + avg metrics (max 4 cols)
     const yoyR2=[];
     if(isOn('f-comprate')) yoyR2.push(kpiYoY('整體完課率',m1.overallCompRate+'%','',m2.overallCompRate+'%','',y1label,y2label));
+    if(isOn('f-totalhr')) yoyR2.push(kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label));
     if(isOn('f-avgreg')) yoyR2.push(kpiYoY('人均註冊數',m1.avgRegPerLearner,'堂',m2.avgRegPerLearner,'堂',y1label,y2label));
     if(isOn('f-avgcomp')) yoyR2.push(kpiYoY('人均完課數',m1.avgCompPerLearner,'堂',m2.avgCompPerLearner,'堂',y1label,y2label));
     if(isOn('f-avghr')) yoyR2.push(kpiYoY('人均學習時數',m1.avgHrPerLearner,'hr',m2.avgHrPerLearner,'hr',y1label,y2label));
-    if(kpis1.length) html+=`<div class="kpi-row" style="grid-template-columns:repeat(${Math.min(kpis1.length,4)},1fr)">${kpis1.join('')}</div>`;
-    if(yoyR2.length) html+=`<div class="kpi-row" style="grid-template-columns:repeat(${Math.min(yoyR2.length,4)},1fr)">${yoyR2.join('')}</div>`;
+    if(kpis1.length) html+=chunkRows(kpis1,3);
+    if(yoyR2.length) html+=chunkRows(yoyR2,3);
   } else {
-    if(kpis1.length) html+=`<div class="kpi-row" style="grid-template-columns:repeat(${kpis1.length},1fr)">${kpis1.join('')}</div>`;
     const kpis2=[];
     if(isOn('f-avgreg')) kpis2.push(kpiCard('人均註冊數',m1.avgRegPerLearner,'堂','以不重複學習人數為分母'));
     if(isOn('f-avgcomp')) kpis2.push(kpiCard('人均完課數',m1.avgCompPerLearner,'堂','以不重複學習人數為分母'));
     if(isOn('f-avghr')) kpis2.push(kpiCard('人均學習時數',m1.avgHrPerLearner,'hr','以不重複學習人數為分母'));
-    if(kpis2.length) html+=`<div class="kpi-row" style="grid-template-columns:repeat(${kpis2.length},1fr)">${kpis2.join('')}</div>`;
+    if(kpis1.length) html+=chunkRows(kpis1,3);
+    if(kpis2.length) html+=chunkRows(kpis2,3);
   }
   return html;
 }
@@ -1200,6 +1219,8 @@ function assignRows(assignBatches) {
 function buildSections(d) {
   const {clientName,dateFrom,dateTo,m1,m2,y1label,y2label,
     deptStats,assignBatches,topAll,topSelf,trafficData,insights,modules}=d;
+  // For cat/pie/heatmap analyses: use m2 when YoY is on
+  const mPrimary = (modules.yoy && m2) ? m2 : m1;
   const sections=[];
 
   // KPIs
@@ -1225,10 +1246,10 @@ function buildSections(d) {
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
           <table class="rtable">
             <thead><tr><th>課程主分類</th><th class="r">總註冊數</th><th class="r">完課數</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
-            <tbody>${renderCatTableHahow(m1.catMap,m1.catWatchMap)}</tbody>
+            <tbody>${renderCatTableHahow(mPrimary.catMap,mPrimary.catWatchMap)}</tbody>
           </table>
         </div>`,insight:insights?.category});
-      const entRows=renderCatTableEnterprise(m1.catMap,m1.catWatchMap);
+      const entRows=renderCatTableEnterprise(mPrimary.catMap,mPrimary.catWatchMap);
       if(entRows) sections.push({eyebrow:'課程學習',title:'各分類完課表現 — 企業自訂課程',content:`
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
           <table class="rtable">
@@ -1236,17 +1257,17 @@ function buildSections(d) {
             <tbody>${entRows}</tbody>
           </table>
         </div>`,insight:null});
-      if(isOn('f-catpie')) sections.push({eyebrow:'課程學習',title:'各分類比例',content:renderPies(m1.catMap,m1.catWatchMap),insight:null});
+      if(isOn('f-catpie')) sections.push({eyebrow:'課程學習',title:'各分類比例',content:renderPies(mPrimary.catMap,mPrimary.catWatchMap),insight:null});
     } else {
       const catContent=[];
       if(isOn('f-cattable')) catContent.push(`
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
           <table class="rtable">
             <thead><tr><th>課程主分類</th><th class="r">總註冊數</th><th class="r">完課數</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
-            <tbody>${renderCatTable(m1.catMap,m1.catWatchMap)}</tbody>
+            <tbody>${renderCatTable(mPrimary.catMap,mPrimary.catWatchMap)}</tbody>
           </table>
         </div>`);
-      if(isOn('f-catpie')) catContent.push(renderPies(m1.catMap,m1.catWatchMap));
+      if(isOn('f-catpie')) catContent.push(renderPies(mPrimary.catMap,mPrimary.catWatchMap));
       if(catContent.length) sections.push({eyebrow:'課程學習',title:'各分類完課表現',content:catContent.join(''),insight:insights?.category});
     }
   }
@@ -1293,7 +1314,7 @@ function buildSections(d) {
     const deptContent=[];
     if(isOn('f-deptbars')){
       deptContent.push(`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
-        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 觀看時間為 0</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
         <table class="dept-tbl">
           <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
           <tbody>${renderDeptBars(deptStats)}</tbody>
@@ -1316,7 +1337,7 @@ function buildSections(d) {
           const pg=Math.floor(i/DEPT_PER_SLIDE)+1;
           const total=Math.ceil(deptStats.length/DEPT_PER_SLIDE);
           const chunkContent=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
-            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 觀看時間為 0</div>
+            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
             <table class="dept-tbl">
               <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
               <tbody>${renderDeptBars(chunk)}</tbody>
@@ -1511,12 +1532,18 @@ async function generateReport() {
     setStep('計算指標…');
     const m1=computeMetrics(learnersRaw,coursesRaw);
     const m2=learnersRaw2&&coursesRaw2?computeMetrics(learnersRaw2,coursesRaw2):null;
-    const deptLevel=modules.dept?parseInt(document.getElementById('deptLevel')?.value||'1')||1:1;
-    const deptStats=modules.dept?getDeptStats(learnersRaw,coursesRaw,deptLevel):[];
+    const deptLevel=modules.dept?Math.max(1,parseInt(document.getElementById('deptLevel')?.value||'1')||1):1;
+    // Merge both years for dept stats so zeroCount covers all accounts
+    // For all analyses except KPI/trend: use Y2 when YoY is on
+    const primaryCourses = (modules.yoy && coursesRaw2) ? coursesRaw2 : coursesRaw;
+    const primaryLearners = (modules.yoy && learnersRaw2) ? learnersRaw2 : learnersRaw;
+
+    const deptStats=modules.dept?getDeptStats(primaryLearners,primaryCourses,deptLevel):[];
     const assignBatches=modules.assign?processAssign(assignRaw):[];
     const assignedNames=modules.assign?getAssignedNames(assignRaw):new Set();
-    const topAll=m1.allCourses.slice(0,10);
-    const topSelf=m1.allCourses.filter(c=>!assignedNames.has(c.name)).slice(0,10);
+    const allCoursesY = (modules.yoy && m2) ? m2.allCourses : m1.allCourses;
+    const topAll=allCoursesY.slice(0,10);
+    const topSelf=allCoursesY.filter(c=>!assignedNames.has(c.name)).slice(0,10);
     const trafficData=modules.traffic?processTraffic(trafficLine,trafficLimit):null;
 
     const insights=null;
