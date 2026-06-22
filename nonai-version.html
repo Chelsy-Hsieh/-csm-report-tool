@@ -526,7 +526,7 @@ function toggleModule(mod) {
 }
 
 function updateFields() {
-  const ids = ['f-unique','f-activation','f-totalreg','f-totalcomp','f-avgreg','f-avgcomp','f-avghr',
+  const ids = ['f-unique','f-activation','f-totalreg','f-totalcomp','f-comprate','f-totalhr','f-avgreg','f-avgcomp','f-avghr',
     'f-trend','f-cattable','f-catpie','f-top10all','f-top10self','f-deptbars','f-deptheat','f-assign','f-traffic'];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -963,8 +963,9 @@ function chunkRows(items, maxCols) {
   for(let i=0;i<items.length;i+=maxCols){
     const chunk=items.slice(i,i+maxCols);
     const cols=chunk.length;
-    const centerStyle=cols<maxCols?`max-width:${Math.round(cols/maxCols*100)}%;margin-left:auto;margin-right:auto`:'';
-    out+=`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:12px;margin-bottom:12px;${centerStyle}">${chunk.join('')}</div>`;
+    // Last row: keep card width same as full rows by using maxCols template,
+    // but only render `cols` cells (left-aligned, remaining grid cells stay empty)
+    out+=`<div style="display:grid;grid-template-columns:repeat(${maxCols},1fr);gap:12px;margin-bottom:12px">${chunk.join('')}</div>`;
   }
   return out;
 }
@@ -986,27 +987,22 @@ function renderKPIs(m1, m2, y1label, y2label) {
   if(isOn('f-totalcomp')) kpis1.push(yoy
     ? kpiYoY('完成課程總數',m1.totalComp.toLocaleString(),'筆',m2.totalComp.toLocaleString(),'筆',y1label,y2label)
     : kpiCard('完成課程總數',m1.totalComp.toLocaleString(),'筆',''));
-  if(isOn('f-totalhr')) kpis1.push(yoy
-    ? kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label)
-    : kpiCard('學習總時數',m1.totalHr,'hr','所有學員觀看時間加總'));
+  if(isOn('f-totalhr')&&!yoy) kpis1.push(kpiCard('學習總時數',m1.totalHr,'hr','所有學員觀看時間加總'));
   if(isOn('f-comprate')&&!yoy) kpis1.push(kpiCard('整體完課率',m1.overallCompRate,'%','完成 / 已註冊課程',true));
   if(yoy){
-    // YoY mode: row1 max 4 cols (unique, activation, totalreg, totalcomp)
-    // row2: comprate + avg metrics (max 4 cols)
-    const yoyR2=[];
-    if(isOn('f-comprate')) yoyR2.push(kpiYoY('整體完課率',m1.overallCompRate+'%','',m2.overallCompRate+'%','',y1label,y2label));
-    if(isOn('f-totalhr')) yoyR2.push(kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label));
-    if(isOn('f-avgreg')) yoyR2.push(kpiYoY('人均註冊數',m1.avgRegPerLearner,'堂',m2.avgRegPerLearner,'堂',y1label,y2label));
-    if(isOn('f-avgcomp')) yoyR2.push(kpiYoY('人均完課數',m1.avgCompPerLearner,'堂',m2.avgCompPerLearner,'堂',y1label,y2label));
-    if(isOn('f-avghr')) yoyR2.push(kpiYoY('人均學習時數',m1.avgHrPerLearner,'hr',m2.avgHrPerLearner,'hr',y1label,y2label));
-    if(kpis1.length) html+=chunkRows(kpis1,3);
-    if(yoyR2.length) html+=chunkRows(yoyR2,3);
+    // YoY mode: combine ALL kpis into one array, then chunk together as 3-per-row
+    const yoyAll=[...kpis1];
+    if(isOn('f-comprate')) yoyAll.push(kpiYoY('整體完課率',m1.overallCompRate+'%','',m2.overallCompRate+'%','',y1label,y2label));
+    if(isOn('f-totalhr')) yoyAll.push(kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label));
+    if(isOn('f-avgreg')) yoyAll.push(kpiYoY('人均註冊數',m1.avgRegPerLearner,'堂',m2.avgRegPerLearner,'堂',y1label,y2label));
+    if(isOn('f-avgcomp')) yoyAll.push(kpiYoY('人均完課數',m1.avgCompPerLearner,'堂',m2.avgCompPerLearner,'堂',y1label,y2label));
+    if(isOn('f-avghr')) yoyAll.push(kpiYoY('人均學習時數',m1.avgHrPerLearner,'hr',m2.avgHrPerLearner,'hr',y1label,y2label));
+    if(yoyAll.length) html+=chunkRows(yoyAll,3);
   } else {
-    const kpis2=[];
+    const kpis2=[...kpis1];
     if(isOn('f-avgreg')) kpis2.push(kpiCard('人均註冊數',m1.avgRegPerLearner,'堂','以不重複學習人數為分母'));
     if(isOn('f-avgcomp')) kpis2.push(kpiCard('人均完課數',m1.avgCompPerLearner,'堂','以不重複學習人數為分母'));
     if(isOn('f-avghr')) kpis2.push(kpiCard('人均學習時數',m1.avgHrPerLearner,'hr','以不重複學習人數為分母'));
-    if(kpis1.length) html+=chunkRows(kpis1,3);
     if(kpis2.length) html+=chunkRows(kpis2,3);
   }
   return html;
