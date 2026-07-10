@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hahow for Business｜學習成效報告產生器 — 純數據版</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+:root{
+  --ink:#1C1A17;--ink2:#3D3A35;--muted:#7A756E;--faint:#B0AAA2;
+  --border:#E4E0DA;--surface:#FFFFFF;--bg:#F5F3EF;--bg2:#EDEAE4;
+  --teal:#00968A;--teal-d:#007A70;--teal-l:#E3F4F2;--teal-m:#4DB8B0;
+  --amber:#D97706;--amber-l:#FEF3C7;
+  --red:#DC2626;--red-l:#FEE2E2;
+  --green:#059669;--green-l:#D1FAE5;
+  --purple:#7C3AED;--purple-l:#EDE9FE;
+  --r:10px;--r-sm:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;min-height:100vh;}
+.app{display:grid;grid-template-columns:380px 1fr;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{background:#F0F7F6;border-right:1px solid #C8E3E0;color:var(--ink);padding:28px 24px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin;}
+.sidebar-logo{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--teal);font-weight:700;}
+.sidebar-title{font-size:17px;font-weight:600;line-height:1.3;color:var(--ink);}
+.sidebar-desc{font-size:11px;color:var(--muted);line-height:1.6;margin-top:4px;}
+.sb-section{display:flex;flex-direction:column;gap:7px;}
+.sb-label{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--teal);padding-bottom:5px;border-bottom:1.5px solid #C8E3E0;}
+
+/* API Key */
+.api-key-wrap{background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:9px 12px;}
+.api-key-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.api-key-input{width:100%;background:transparent;border:none;outline:none;color:var(--ink);font-size:11px;font-family:inherit;}
+.api-key-hint{font-size:10px;color:var(--faint);margin-top:3px;line-height:1.4;}
+
+/* File slots */
+.file-slot{background:white;border:1.5px dashed #C8E3E0;border-radius:var(--r-sm);padding:8px 11px;cursor:pointer;transition:all 0.15s;position:relative;}
+.file-slot:hover{border-color:var(--teal);background:var(--teal-l);}
+.file-slot.uploaded{border-style:solid;border-color:var(--teal);background:var(--teal-l);}
+.file-slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+.file-slot-name{font-size:11px;font-weight:600;color:var(--ink2);}
+.file-slot-status{font-size:10px;color:var(--faint);margin-top:1px;}
+.file-slot.uploaded .file-slot-status{color:var(--teal);}
+.fst{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;letter-spacing:0.06em;text-transform:uppercase;background:var(--teal-l);color:var(--teal);margin-bottom:2px;}
+.fst.opt{background:#E9F5F3;color:var(--teal-m);}
+
+/* Module toggles */
+.module-toggle{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;background:white;border:1px solid #D4E9E7;border-radius:var(--r-sm);cursor:pointer;transition:all 0.15s;user-select:none;}
+.module-toggle:hover{border-color:var(--teal);}
+.module-toggle.active{border-color:var(--teal);background:var(--teal-l);}
+.toggle-check{width:15px;height:15px;border-radius:3px;border:1.5px solid #A8CECA;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.module-toggle.active .toggle-check{background:var(--teal);border-color:var(--teal);}
+.toggle-check svg{display:none;}
+.module-toggle.active .toggle-check svg{display:block;}
+.toggle-name{font-size:11px;font-weight:600;color:var(--ink2);}
+.toggle-req{font-size:10px;color:var(--faint);margin-top:0;}
+.module-toggle.active .toggle-req{color:var(--teal);}
+
+/* Field checkboxes */
+.field-group{background:white;border:1px solid #D4E9E7;border-radius:var(--r-sm);padding:10px 12px;}
+.field-group-title{font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:7px;}
+.field-checks{display:flex;flex-direction:column;gap:5px;}
+.field-check{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;}
+.field-check input[type=checkbox]{width:13px;height:13px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
+.field-check-label{font-size:11px;color:var(--ink2);}
+.field-check.sub{padding-left:16px;}
+.field-check.sub .field-check-label{color:var(--muted);font-size:10px;}
+
+/* Traffic limit */
+.traffic-limit-wrap{display:flex;align-items:center;gap:8px;background:white;border:1px solid #D4E9E7;border-radius:var(--r-sm);padding:7px 11px;}
+.traffic-limit-wrap label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.traffic-limit-input{background:transparent;border:none;border-bottom:1.5px solid var(--teal);outline:none;color:var(--ink);font-size:13px;font-weight:700;font-family:inherit;width:40px;text-align:center;}
+
+/* Inputs */
+.client-input{background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:8px 11px;width:100%;color:var(--ink);font-size:12px;font-family:inherit;outline:none;transition:border-color 0.15s;}
+.client-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,150,138,0.08);}
+.client-input::placeholder{color:var(--faint);}
+.context-box{background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:9px 11px;}
+.context-label{font-size:10px;color:var(--muted);margin-bottom:4px;}
+.context-box textarea{width:100%;background:transparent;border:none;outline:none;color:var(--ink);font-size:11px;line-height:1.6;font-family:inherit;resize:none;min-height:56px;}
+.context-box textarea::placeholder{color:var(--faint);}
+
+/* View toggle */
+.view-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.view-btn{background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:7px 8px;font-size:11px;font-weight:500;font-family:inherit;color:var(--muted);cursor:pointer;text-align:center;transition:all 0.15s;}
+.view-btn:hover{border-color:var(--teal);color:var(--teal);}
+.view-btn.active{background:var(--teal);color:white;border-color:var(--teal);}
+
+.gen-btn{background:var(--teal);color:white;border:none;border-radius:var(--r-sm);padding:11px 18px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;width:100%;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.gen-btn:hover:not(:disabled){background:var(--teal-d);}
+.gen-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* MAIN */
+.main{padding:36px 40px;display:flex;flex-direction:column;}
+.empty-state{margin:auto;text-align:center;max-width:380px;padding:60px 0;}
+.empty-icon{font-size:44px;margin-bottom:14px;}
+.empty-title{font-size:17px;font-weight:600;color:var(--ink2);margin-bottom:7px;}
+.empty-desc{font-size:12px;color:var(--muted);line-height:1.7;}
+.loading-state{margin:auto;text-align:center;padding:60px 0;}
+.loading-spinner{width:32px;height:32px;border:2.5px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-msg{font-size:13px;color:var(--muted);}
+.loading-step{font-size:11px;color:var(--faint);margin-top:3px;min-height:16px;}
+
+/* PRINT BAR */
+.report-wrap{width:100%;}
+.print-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;margin-bottom:20px;position:sticky;top:16px;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+.print-bar-left{font-size:12px;color:var(--muted);}
+.print-bar-left b{color:var(--ink);}
+.print-bar-actions{display:flex;gap:7px;}
+.btn-outline{padding:6px 12px;font-size:11px;font-weight:500;font-family:inherit;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--ink2);cursor:pointer;transition:all 0.15s;}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal);}
+.btn-primary{padding:6px 14px;font-size:11px;font-weight:600;font-family:inherit;border:none;border-radius:var(--r-sm);background:var(--teal);color:white;cursor:pointer;transition:background 0.15s;}
+.btn-primary:hover{background:var(--teal-d);}
+
+/* REPORT — PORTRAIT */
+.report{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.report-header{background:var(--ink);color:white;padding:32px 40px 28px;position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.report-header::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:var(--teal);opacity:0.11;}
+.rh-badge{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--teal-m);font-weight:600;margin-bottom:9px;}
+.rh-title{font-size:22px;font-weight:600;line-height:1.2;margin-bottom:5px;}
+.rh-sub{color:rgba(255,255,255,0.8);font-size:12px;}
+.rh-meta{margin-top:18px;display:flex;gap:24px;font-size:11px;color:rgba(255,255,255,0.7);}
+.rh-meta span b{color:rgba(255,255,255,0.95);font-weight:600;}
+.report-body{padding:32px 40px;display:flex;flex-direction:column;gap:36px;}
+
+/* REPORT — SLIDES */
+.slides-wrap{display:flex;flex-direction:column;gap:24px;}
+.slide{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;page-break-after:always;
+  /* 16:9 */
+  width:100%;aspect-ratio:16/9;display:flex;flex-direction:column;max-height:none;box-sizing:border-box;}
+.slide-header{background:var(--ink);color:white;padding:16px 36px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.slide-title{font-size:16px;font-weight:600;}
+.slide-meta{font-size:11px;color:rgba(255,255,255,0.8);}
+.slide-body{padding:22px 36px;flex:1;overflow:hidden;}
+/* Cover slide */
+.slide-cover{background:var(--ink);color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;}
+.slide-cover::before{content:'';position:absolute;bottom:-80px;right:-80px;width:320px;height:320px;border-radius:50%;background:var(--teal);opacity:0.12;}
+.slide-cover::after{content:'';position:absolute;top:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:var(--teal-m);opacity:0.08;}
+.cover-logo{font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--teal-m);font-weight:700;margin-bottom:24px;}
+.cover-client{font-size:32px;font-weight:700;color:white;line-height:1.2;margin-bottom:10px;}
+.cover-report{font-size:16px;color:rgba(255,255,255,0.5);margin-bottom:32px;}
+.cover-meta{display:flex;gap:32px;font-size:12px;color:rgba(255,255,255,0.75);}
+.cover-meta span b{color:white;font-weight:600;}
+
+/* Sections */
+.rs-eyebrow{font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--teal);margin-bottom:3px;}
+.rs-title{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:14px;padding-bottom:9px;border-bottom:2px solid var(--border);}
+
+/* KPI */
+.kpi-row{display:grid;gap:12px;margin-bottom:12px;}
+.kpi-row.c4{grid-template-columns:repeat(4,1fr);}
+.kpi-row.c3{grid-template-columns:repeat(3,1fr);}
+.kpi-row.c2plus{grid-template-columns:1fr 2fr;}
+.kpi-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.kpi-card{background:var(--bg);border:1px solid var(--teal);border-radius:var(--r);padding:16px 14px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.kpi-card.hl{border-color:var(--teal);}
+.kpi-lbl{font-size:10px;color:var(--faint);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:5px;}
+.kpi-val{font-size:26px;font-weight:700;color:var(--ink);line-height:1;}
+.kpi-val .u{font-size:13px;font-weight:400;color:var(--muted);margin-left:2px;}
+.kpi-sub{font-size:11px;color:var(--faint);margin-top:3px;}
+/* YoY comparison */
+.kpi-yoy{display:flex;align-items:baseline;gap:8px;margin-top:4px;}
+.kpi-y1{font-size:12px;color:var(--muted);}
+.kpi-y2{font-size:22px;font-weight:700;color:var(--ink);}
+.kpi-y2 .u{font-size:12px;font-weight:400;color:var(--muted);margin-left:1px;}
+.kpi-delta{font-size:11px;font-weight:600;padding:1px 6px;border-radius:20px;}
+.kpi-delta.up{background:var(--green-l);color:var(--green);}
+.kpi-delta.dn{background:var(--red-l);color:var(--red);}
+.kpi-delta.flat{background:var(--bg2);color:var(--muted);}
+
+/* Tables */
+.rtable{width:100%;border-collapse:collapse;font-size:12px;}
+.rtable th{text-align:left;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--faint);padding:8px 10px;border-bottom:1px solid var(--border);font-weight:500;}
+.rtable td{padding:8px 10px;border-bottom:1px solid var(--bg2);color:var(--ink);}
+.rtable tr:last-child td{border-bottom:none;}
+.rtable th.r,.rtable td.r{text-align:right;}
+.pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px;}
+.pill-g{background:var(--green-l);color:var(--green);}
+.pill-a{background:var(--amber-l);color:var(--amber);}
+.pill-r{background:var(--red-l);color:var(--red);}
+.pill-t{background:var(--teal-l);color:var(--teal);}
+.rank-n{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;font-size:10px;font-weight:700;background:var(--bg2);color:var(--muted);}
+.rank-n.g1{background:#FEF3C7;color:#B45309;}
+.rank-n.g2{background:#F1F5F9;color:#475569;}
+.rank-n.g3{background:#FEF9EE;color:#92400E;}
+
+/* Dept bars */
+.dept-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.dept-tbl th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);padding:7px 9px;border-bottom:1px solid var(--border);font-weight:500;}
+.dept-tbl td{padding:7px 9px;border-bottom:none;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.dept-tbl .dr td{border-bottom:1px solid var(--bg2);}
+.dept-nm{font-weight:600;font-size:11px;}
+.dept-n2{font-size:10px;color:var(--faint);}
+.hbw{display:flex;flex-direction:column;gap:2px;}
+.hbr{display:flex;align-items:center;gap:5px;}
+.hbl{font-size:9px;color:var(--faint);min-width:24px;}
+.hb{height:6px;border-radius:3px;min-width:2px;}
+.hbv{font-size:10px;color:var(--muted);white-space:nowrap;min-width:32px;}
+
+/* Pie chart */
+.pie-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px;}
+.pie-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;}
+.pie-card-title{font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:500;}
+.pie-legend{display:flex;flex-direction:column;gap:4px;margin-top:10px;text-align:left;}
+.pie-legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);}
+.pie-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* Heatmap */
+.heat-table{width:100%;border-collapse:collapse;font-size:11px;}
+.heat-table th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:500;}
+.heat-table th:first-child{text-align:left;}
+.heat-table td{padding:5px 8px;text-align:center;font-size:11px;font-weight:500;border-radius:3px;}
+.heat-table td:first-child{text-align:left;font-weight:600;font-size:11px;color:var(--ink);background:transparent!important;}
+.heat-tend{font-size:10px;color:var(--muted);padding-left:8px;}
+
+/* Two col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.card-inner{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.card-inner-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:2px;}
+.card-inner-sub{font-size:10px;color:var(--faint);margin-bottom:12px;}
+
+/* Insight */
+.insight{background:var(--teal-l);border-left:3px solid var(--teal);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 13px;margin-top:12px;font-size:12px;color:#1A5050;line-height:1.65;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.insight b{color:var(--teal);}
+
+.report-footer{text-align:center;padding:18px;font-size:11px;color:var(--faint);border-top:1px solid var(--border);}
+
+/* PRINT */
+@media print{
+  .sidebar,.print-bar{display:none!important;}
+  .app{display:block;}
+  .main{padding:0;}
+  .report,.slide{border:none;border-radius:0;box-shadow:none;}
+  body{background:white;}
+  .report-header,.slide-header{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:var(--ink)!important;color:white!important;}
+  .kpi-card,.card-inner,.insight{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .report-body{gap:24px;}
+  .slide{page-break-after:always;aspect-ratio:16/9!important;}
+  .slides-wrap{gap:0;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div>
+    <div class="sidebar-logo">Hahow for Business</div>
+    <div class="sidebar-title">學習成效報告產生器</div>
+    <div class="sidebar-desc">上傳平台匯出檔案，選擇模組與欄位，產出客製化成效報告。</div>
+  </div>
+
+  <!-- API KEY (v2 only) -->
+  
+
+  <!-- CLIENT -->
+  <div class="sb-section">
+    <div class="sb-label">客戶名稱</div>
+    <input class="client-input" id="clientName" type="text" placeholder="例：強茂股份有限公司">
+  </div>
+
+  <!-- DATE -->
+  <div class="sb-section">
+    <div class="sb-label">統計區間</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      <input class="client-input" id="dateFrom" type="text" placeholder="2025/07/01">
+      <input class="client-input" id="dateTo" type="text" placeholder="2026/05/31">
+    </div>
+  </div>
+
+  <!-- VIEW MODE -->
+  <div class="sb-section">
+    <div class="sb-label">報告格式</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-portrait" onclick="setView('portrait')">📄 直式報告</button>
+      <button class="view-btn" id="btn-slides" onclick="setView('slides')">📊 投影片</button>
+    </div>
+  </div>
+
+  <!-- CORE FILES + optional YoY -->
+  <div class="sb-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div class="sb-label" style="border:none;padding:0">必備檔案</div>
+      <div class="module-toggle" id="mod-yoy" onclick="toggleModule('yoy')" style="padding:4px 8px;margin:0;border-radius:20px">
+        <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><div class="toggle-name" style="font-size:10px">年度對比</div></div>
+      </div>
+    </div>
+    <!-- Single year (default) -->
+    <div id="files-single">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <label class="file-slot" id="slot-learners">
+          <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'learners')">
+          <div class="fst">必填</div>
+          <div class="file-slot-name">學員學習記錄</div>
+          <div class="file-slot-status" id="status-learners">點擊上傳 .xlsx</div>
+        </label>
+        <label class="file-slot" id="slot-courses">
+          <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses')">
+          <div class="fst">必填</div>
+          <div class="file-slot-name">學員課程紀錄</div>
+          <div class="file-slot-status" id="status-courses">點擊上傳 .xlsx</div>
+        </label>
+      </div>
+    </div>
+    <!-- Two years (YoY mode) -->
+    <div id="files-yoy" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <input class="client-input" id="y1label" type="text" placeholder="第一年度" style="font-size:11px;font-weight:600;color:var(--teal)">
+          <label class="file-slot" id="slot-learners">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'learners')">
+            <div class="fst">年度一</div>
+            <div class="file-slot-name">學員學習記錄</div>
+            <div class="file-slot-status" id="status-learners">點擊上傳 .xlsx</div>
+          </label>
+          <label class="file-slot" id="slot-courses">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses')">
+            <div class="fst">年度一</div>
+            <div class="file-slot-name">學員課程紀錄</div>
+            <div class="file-slot-status" id="status-courses">點擊上傳 .xlsx</div>
+          </label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <input class="client-input" id="y2label" type="text" placeholder="第二年度" style="font-size:11px;font-weight:600;color:var(--purple)">
+          <label class="file-slot" id="slot-learners2">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'learners2')">
+            <div class="fst opt">年度二</div>
+            <div class="file-slot-name">學員學習記錄</div>
+            <div class="file-slot-status" id="status-learners2">點擊上傳 .xlsx</div>
+          </label>
+          <label class="file-slot" id="slot-courses2">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses2')">
+            <div class="fst opt">年度二</div>
+            <div class="file-slot-name">學員課程紀錄</div>
+            <div class="file-slot-status" id="status-courses2">點擊上傳 .xlsx</div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONDITIONAL MODULES -->
+  <div class="sb-section">
+    <div class="sb-label">條件模組</div>
+    <div class="module-toggle active" id="mod-dept" onclick="toggleModule('dept')">
+      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="toggle-name">部門分析</div><div class="toggle-req">不需額外檔案</div></div>
+    </div>
+    <div id="dept-level-wrap" style="display:flex;align-items:center;gap:8px;background:white;border:1px solid #D4E9E7;border-radius:var(--r-sm);padding:7px 11px">
+      <label style="font-size:11px;color:var(--muted);white-space:nowrap" for="deptLevel">部門分析層級：</label>
+      <select id="deptLevel" style="background:transparent;border:none;border-bottom:1.5px solid var(--teal);outline:none;color:var(--ink);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">
+        <option value="1">第 1 層</option>
+        <option value="2">第 2 層</option>
+        <option value="3">第 3 層</option>
+        <option value="4">第 4 層</option>
+        <option value="5">第 5 層</option>
+        <option value="6">第 6 層</option>
+        <option value="99">完整名稱</option>
+      </select>
+    </div>
+    <div class="module-toggle" id="mod-assign" onclick="toggleModule('assign')">
+      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="toggle-name">指派課程分析</div><div class="toggle-req">需上傳：指派課程報表</div></div>
+    </div>
+    <label class="file-slot" id="slot-assign" style="display:none">
+      <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'assign')">
+      <div class="fst opt">選填</div>
+      <div class="file-slot-name">指派課程報表</div>
+      <div class="file-slot-status" id="status-assign">點擊上傳 .xlsx</div>
+    </label>
+
+    <div class="module-toggle" id="mod-traffic" onclick="toggleModule('traffic')">
+      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="toggle-name">流量使用分析</div><div class="toggle-req">需上傳：在線人數 CSV</div></div>
+    </div>
+    <div id="traffic-files" style="display:none;flex-direction:column;gap:7px;">
+      <div class="traffic-limit-wrap">
+        <label for="trafficLimit">方案流量上限：</label>
+        <input class="traffic-limit-input" id="trafficLimit" type="number" value="10" min="1">
+        <span style="font-size:11px;color:rgba(255,255,255,0.35)">人</span>
+      </div>
+      <label class="file-slot">
+        <input type="file" accept=".csv" onchange="handleFile(this,'traffic_line')">
+        <div class="fst opt">選填</div>
+        <div class="file-slot-name">在線人數（折線圖原始數據）</div>
+        <div class="file-slot-status" id="status-traffic_line">點擊上傳 .csv</div>
+      </label>
+    </div>
+
+    <div class="module-toggle" id="mod-customlist" onclick="toggleModule('customlist')">
+      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="toggle-name">自訂課程清單分析</div><div class="toggle-req">需上傳：課程清單 Excel</div></div>
+    </div>
+    <div id="customlist-files" style="display:none;flex-direction:column;gap:7px;">
+      <label class="file-slot">
+        <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'customlist')">
+        <div class="fst opt">選填</div>
+        <div class="file-slot-name">課程清單（欄位：課程名稱）</div>
+        <div class="file-slot-status" id="status-customlist">點擊上傳 .xlsx</div>
+      </label>
+    </div>
+  </div>
+
+  <!-- FIELD SELECTION -->
+  <div class="sb-section">
+    <div class="sb-label">欄位選擇</div>
+
+    <div class="field-group">
+      <div class="field-group-title">整體指標</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-unique" checked onchange="updateFields()"><span class="field-check-label">不重複學習人數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-activation" checked onchange="updateFields()"><span class="field-check-label">帳號啟用率</span></label>
+        <label class="field-check"><input type="checkbox" id="f-totalreg" checked onchange="updateFields()"><span class="field-check-label">註冊課程總數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-totalcomp" checked onchange="updateFields()"><span class="field-check-label">完成課程總數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-comprate" checked onchange="updateFields()"><span class="field-check-label">整體完課率</span></label>
+        <label class="field-check"><input type="checkbox" id="f-avgreg" checked onchange="updateFields()"><span class="field-check-label">人均註冊數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-avgcomp" checked onchange="updateFields()"><span class="field-check-label">人均完課數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-totalhr" checked onchange="updateFields()"><span class="field-check-label">學習總時數</span></label>
+        <label class="field-check"><input type="checkbox" id="f-avghr" checked onchange="updateFields()"><span class="field-check-label">人均學習時數</span></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">每月學習趨勢</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-trend" checked onchange="updateFields()"><span class="field-check-label">月度趨勢圖</span></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">各分類完課表現</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-cattable" checked onchange="updateFields()"><span class="field-check-label">分類完課率表格</span></label>
+        <label class="field-check"><input type="checkbox" id="f-catpie" checked onchange="updateFields()"><span class="field-check-label">圓餅圖（三種比例）</span></label>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">Top 10 選讀課程</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-top10all" checked onchange="updateFields()"><span class="field-check-label">含指派課程</span></label>
+        <label class="field-check" id="f-top10self-wrap"><input type="checkbox" id="f-top10self" checked onchange="updateFields()"><span class="field-check-label">排除指派（自學傾向）</span></label>
+      </div>
+    </div>
+
+    <div class="field-group" id="fg-dept">
+      <div class="field-group-title">部門分析</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-deptbars" checked onchange="updateFields()"><span class="field-check-label">人均學習指標</span></label>
+        <label class="field-check"><input type="checkbox" id="f-deptheat" checked onchange="updateFields()"><span class="field-check-label">課程主題偏好熱力圖</span></label>
+      </div>
+    </div>
+
+    <div class="field-group" id="fg-assign" style="display:none">
+      <div class="field-group-title">指派課程分析</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-assign" checked onchange="updateFields()"><span class="field-check-label">班次完課率表格</span></label>
+        <label class="field-check"><input type="checkbox" id="f-assignpie" checked onchange="updateFields()"><span class="field-check-label">指派 vs 自學比例圖</span></label>
+      </div>
+    </div>
+
+    <div class="field-group" id="fg-traffic" style="display:none">
+      <div class="field-group-title">流量使用分析</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-traffic" checked onchange="updateFields()"><span class="field-check-label">每日在線人數圖</span></label>
+      </div>
+    </div>
+
+    <div class="field-group" id="fg-customlist" style="display:none">
+      <div class="field-group-title">自訂課程清單分析</div>
+      <div class="field-checks">
+        <label class="field-check"><input type="checkbox" id="f-customlist" checked onchange="updateFields()"><span class="field-check-label">課程清單表格</span></label>
+      </div>
+    </div>
+  </div>
+
+    <input type="hidden" id="contextNote" value="">
+
+  <button class="gen-btn" id="genBtn" onclick="generateReport()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+    產出成效報告
+  </button>
+</aside>
+
+<main class="main" id="mainArea">
+  <div class="empty-state">
+    <div class="empty-icon">📊</div>
+    <div class="empty-title">準備好了嗎？</div>
+    <div class="empty-desc">上傳必備檔案，選擇模組與欄位，<br>填入客戶背景後點擊「產出成效報告」。<br><br><span style="font-size:11px;color:var(--faint)">版本：純數據版</span></div>
+  </div>
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+
+const files = {};
+const modules = { dept:true, assign:false, traffic:false, yoy:false, customlist:false };
+const fields = {};
+let viewMode = 'portrait';
+
+function handleFile(input, key) {
+  const file = input.files[0]; if(!file) return;
+  files[key] = file;
+  input.closest('.file-slot').classList.add('uploaded');
+  const s = document.getElementById('status-'+key);
+  if(s) s.textContent = '✓ '+file.name;
+}
+
+function setView(v) {
+  viewMode = v;
+  ['portrait','slides'].forEach(m => {
+    document.getElementById('btn-'+m).classList.toggle('active', m===v);
+  });
+}
+
+function toggleModule(mod) {
+  modules[mod] = !modules[mod];
+  document.getElementById('mod-'+mod).classList.toggle('active', modules[mod]);
+  if(mod==='assign') {
+    document.getElementById('slot-assign').style.display = modules[mod]?'block':'none';
+    document.getElementById('fg-assign').style.display = modules[mod]?'block':'none';
+    document.getElementById('f-top10self-wrap').style.display = modules[mod]?'flex':'none';
+
+  }
+  if(mod==='traffic') {
+    document.getElementById('traffic-files').style.display = modules[mod]?'flex':'none';
+    document.getElementById('fg-traffic').style.display = modules[mod]?'block':'none';
+  }
+  if(mod==='customlist') {
+    document.getElementById('customlist-files').style.display = modules[mod]?'flex':'none';
+    document.getElementById('fg-customlist').style.display = modules[mod]?'block':'none';
+  }
+  if(mod==='yoy') {
+    document.getElementById('files-single').style.display = modules[mod]?'none':'block';
+    document.getElementById('files-yoy').style.display = modules[mod]?'block':'none';
+
+  }
+  if(mod==='dept') {
+    document.getElementById('fg-dept').style.display = modules[mod]?'block':'none';
+    document.getElementById('dept-level-wrap').style.display = modules[mod]?'flex':'none';
+  }
+}
+
+function updateFields() {
+  const ids = ['f-unique','f-activation','f-totalreg','f-totalcomp','f-comprate','f-totalhr','f-avgreg','f-avgcomp','f-avghr',
+    'f-trend','f-cattable','f-catpie','f-top10all','f-top10self','f-deptbars','f-deptheat','f-assign','f-assignpie','f-traffic','f-customlist'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) fields[id] = el.checked;
+  });
+}
+
+function isOn(id) { return fields[id] !== false; }
+
+async function parseXLSX(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'array',cellDates:true});
+      resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+async function parseCSV(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'string'});
+      resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+    };
+    r.readAsText(file);
+  });
+}
+
+
+function getDeptName(raw, level) {
+  if(!raw) return '未知';
+  const parts = String(raw).split('/');
+  if(level >= 99) return parts.join('/');
+  return parts.slice(0, level).join('/') || parts[0];
+}
+
+function truncDept(name, maxLen=14) {
+  if(!name) return '未知';
+  return name.length > maxLen ? name.slice(0, maxLen) + '…' : name;
+}
+
+function toYYYYMM(val) {
+  if(!val || val === '--') return '';
+  // Already a string like '2025-12-04 14:11:40'
+  if(typeof val === 'string') {
+    const m = val.match(/^(\d{4}-\d{2})/);
+    return m ? m[1] : '';
+  }
+  // JS Date object (from cellDates:true)
+  if(val instanceof Date && !isNaN(val)) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth()+1).padStart(2,'0');
+    return `${y}-${m}`;
+  }
+  // Number (Excel serial date) — fallback
+  if(typeof val === 'number') {
+    try {
+      // Excel epoch: Jan 1 1900 = 1
+      const d = new Date((val - 25569) * 86400 * 1000);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth()+1).padStart(2,'0');
+      return `${y}-${m}`;
+    } catch(e) { return ''; }
+  }
+  return '';
+}
+
+function computeMetrics(learnersRaw, coursesRaw) {
+  // Activation rate
+  const nonRemoved = learnersRaw.filter(r => r['員工使用狀態'] !== '已移除' && r['員工使用狀態'] !== '已停用' && r['員工使用狀態'] !== '停用');
+  const activated = learnersRaw.filter(r => r['員工使用狀態'] === '啟用');
+  const activationRate = nonRemoved.length ? (activated.length / nonRemoved.length * 100).toFixed(1) : '0';
+
+  // Totals from learner records
+  const totalReg = learnersRaw.reduce((s,r)=>s+(Number(r['註冊課程數量'])||0),0);
+  const totalComp = learnersRaw.reduce((s,r)=>s+(Number(r['完成課程數量'])||0),0);
+  const overallCompRate = (totalComp/Math.max(totalReg,1)*100).toFixed(1);
+
+  const monthlyReg={}, monthlyComp={};
+  coursesRaw.forEach(r => {
+    const m=toYYYYMM(r['註冊時間']); if(!m) return;
+    monthlyReg[m]=(monthlyReg[m]||0)+1;
+  });
+  coursesRaw.filter(r=>r['完課狀態']==='已完課').forEach(r => {
+    const m=toYYYYMM(r['完課時間']); if(!m) return;
+    monthlyComp[m]=(monthlyComp[m]||0)+1;
+    // Note: truncation to maxRegMonth is applied in monthlyChartSVG
+  });
+
+  const catMap={}, catWatchMap={};
+  coursesRaw.forEach(r => {
+    const cat=r['課程主分類']||'';
+    if(!cat||cat==='--') return;
+    if(!catMap[cat]) catMap[cat]={total:0,comp:0};
+    catMap[cat].total++;
+    if(r['完課狀態']==='已完課') catMap[cat].comp++;
+    if(!catWatchMap[cat]) catWatchMap[cat]=0;
+    catWatchMap[cat]+=(Number(r['觀看時間（分）'])||0);
+  });
+
+  const courseMap={};
+  coursesRaw.forEach(r => {
+    const name=r['課程名稱']; if(!name) return;
+    if(!courseMap[name]) courseMap[name]={name,cat:r['課程主分類']||'',subcat:r['課程子分類']||'',emails:new Set(),comp:0};
+    courseMap[name].emails.add(r['員工信箱']);
+    if(r['完課狀態']==='已完課') courseMap[name].comp++;
+  });
+  const allCourses=Object.values(courseMap).map(c=>({...c,reg:c.emails.size})).sort((a,b)=>b.reg-a.reg);
+
+  const learnerRows=learnersRaw.filter(r=>(Number(r['註冊課程數量'])||0)>0);
+  const uniqueLearners=learnerRows.length;
+  const totalMin=learnerRows.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0);
+  const avgHrPerLearner=(totalMin/Math.max(uniqueLearners,1)/60).toFixed(1);
+  const avgRegPerLearner=(totalReg/Math.max(uniqueLearners,1)).toFixed(1);
+  const avgCompPerLearner=(totalComp/Math.max(uniqueLearners,1)).toFixed(1);
+
+  // 學習總時數：所有人觀看時間加總（小時）
+  const totalHr = (learnersRaw.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60).toFixed(1);
+
+  return {
+    activatedCount:activated.length, nonRemovedCount:nonRemoved.length, activationRate,
+    totalReg,totalComp,overallCompRate,uniqueLearners,totalHr,
+    avgRegPerLearner,avgCompPerLearner,avgHrPerLearner,
+    monthlyReg,monthlyComp,catMap,catWatchMap,allCourses
+  };
+}
+
+function getDeptStats(learnersRaw, coursesRaw, deptLevel=1) {
+  const emails=new Set(coursesRaw.map(r=>r['員工信箱']));
+  const active=learnersRaw.filter(r=>emails.has(r['員工信箱']));
+  const deptMap={};
+  active.forEach(r => {
+    const dept=getDeptName(r['員工部門'],deptLevel);
+    if(!deptMap[dept]) deptMap[dept]=[];
+    deptMap[dept].push(r);
+  });  // Dept × category heatmap + subcat counts
+  const deptCatMap={}, deptSubcatMap={};
+  coursesRaw.forEach(r => {
+    const dept=getDeptName(r['員工部門'],deptLevel);
+    const cat=r['課程主分類']||'';
+    const subcat=r['課程子分類']||'';
+    if(!cat||cat==='--') return;
+    if(!deptCatMap[dept]) deptCatMap[dept]={};
+    deptCatMap[dept][cat]=(deptCatMap[dept][cat]||0)+1;
+    if(subcat){
+      if(!deptSubcatMap[dept]) deptSubcatMap[dept]={};
+      deptSubcatMap[dept][subcat]=(deptSubcatMap[dept][subcat]||0)+1;
+    }
+  });
+  // Build deptAllMap from all valid accounts (啟用+未啟用)
+  const deptAllMap={};
+  learnersRaw.forEach(r => {
+    const st=r['員工使用狀態'];
+    if(st==='已移除'||st==='已停用'||st==='停用') return;
+    const dept=getDeptName(r['員工部門'],deptLevel);
+    if(!deptAllMap[dept]) deptAllMap[dept]={activated:0,total:0};
+    deptAllMap[dept].total++;
+    if(st==='啟用') deptAllMap[dept].activated++;
+  });
+
+  return Object.entries(deptAllMap)
+    .filter(([,info])=>info.total>=2)
+    .map(([dept,info])=>{
+      const rows=deptMap[dept]||[];
+      const nValid=info.total;
+      const deptActivationRate=(info.activated/Math.max(nValid,1)*100).toFixed(0);
+      const notActivated=nValid-info.activated;
+      // Outlier detection: person whose watch time > 3x dept average
+      // AND > global mean + 1.5 SD
+      const deptMembers = learnersRaw.filter(r => {
+        const st=r['員工使用狀態'];
+        if(st==='已移除'||st==='已停用'||st==='停用') return false;
+        return getDeptName(r['員工部門'],deptLevel)===dept;
+      });
+      const memberHrs = deptMembers.map(r=>({
+        name:r['員工姓名']||r['員工信箱']||'',
+        hr:(Number(r['觀看時間（分）'])||0)/60
+      }));
+      const avgHrVal=(memberHrs.reduce((s,m)=>s+m.hr,0)/Math.max(nValid,1));
+      // Global stats (all non-removed learners)
+      const allHrs=learnersRaw
+        .filter(r=>r['員工使用狀態']!=='已移除'&&r['員工使用狀態']!=='已停用'&&r['員工使用狀態']!=='停用')
+        .map(r=>(Number(r['觀看時間（分）'])||0)/60);
+      const globalMean=allHrs.reduce((s,v)=>s+v,0)/Math.max(allHrs.length,1);
+      const globalSD=Math.sqrt(allHrs.reduce((s,v)=>s+Math.pow(v-globalMean,2),0)/Math.max(allHrs.length,1));
+      const globalThreshold=globalMean+1.5*globalSD;
+      const outliers=memberHrs.filter(m=>
+        m.hr>avgHrVal*3 && avgHrVal>0 && m.hr>globalThreshold
+      );
+
+      return {
+        dept, n:nValid, activationRate:deptActivationRate, notActivated,
+        avgReg:(rows.reduce((s,r)=>s+(Number(r['註冊課程數量'])||0),0)/Math.max(nValid,1)).toFixed(1),
+        avgComp:(rows.reduce((s,r)=>s+(Number(r['完成課程數量'])||0),0)/Math.max(nValid,1)).toFixed(1),
+        avgHr:avgHrVal.toFixed(1),
+        outliers,
+        zeroCount:(()=>{
+          // All 啟用+未啟用 in this dept with 註冊課程數量=0
+          const deptLearners=learnersRaw.filter(r=>{
+            const st=r['員工使用狀態'];
+            if(st==='已移除'||st==='已停用'||st==='停用') return false;
+            const d=getDeptName(r['員工部門'],deptLevel);
+            return d===dept;
+          });
+          return deptLearners.filter(r=>(Number(r['註冊課程數量'])||0)===0).length;
+        })(),
+        catCounts:deptCatMap[dept]||{},
+        subcatCounts:deptSubcatMap[dept]||{}
+      };
+    })
+    .sort((a,b)=>parseFloat(b.avgHr)-parseFloat(a.avgHr));
+}
+
+function processAssign(data) {
+  const filled=[]; let lb='',lc='';
+  data.forEach(r=>{
+    if(r['班次名稱']) lb=r['班次名稱'];
+    if(r['指派課程']) lc=r['指派課程'];
+    if(r['Email']) filled.push({...r,_batch:lb,_course:lc});
+  });
+  const batches={};
+  filled.forEach(r=>{
+    const k=r._batch;
+    if(!batches[k]) batches[k]={name:k,courses:new Set(),people:{}};
+    batches[k].courses.add(r._course);
+    const email=r['Email'];
+    if(!batches[k].people[email]) batches[k].people[email]={done:new Set(),total:new Set()};
+    batches[k].people[email].total.add(r._course);
+    if(r['上課進度']==='100%') batches[k].people[email].done.add(r._course);
+  });
+  return Object.values(batches).map(b=>{
+    const cc=b.courses.size, emails=Object.keys(b.people);
+    const total=emails.length;
+    const comp=emails.filter(e=>b.people[e].done.size>=cc).length;
+    return {name:b.name,total,comp,courseCount:cc};
+  });
+}
+
+function getAssignedNames(assignData) {
+  const names=new Set(); let last='';
+  assignData.forEach(r=>{
+    if(r['指派課程']) last=r['指派課程'];
+    if(r['Email']&&last) names.add(last);
+  });
+  return names;
+}
+
+function processCustomList(customListRaw, coursesRaw) {
+  // 完全比對課程名稱
+  const targetNames = new Set(
+    customListRaw.map(r => String(r['課程名稱']||'').trim()).filter(Boolean)
+  );
+  if (targetNames.size === 0) return { courses: [], notFound: [] };
+
+  const courseMap = {};
+  coursesRaw.forEach(r => {
+    const name = String(r['課程名稱']||'').trim();
+    if (!targetNames.has(name)) return;
+    if (!courseMap[name]) courseMap[name] = {
+      name, cat: r['課程主分類']||'', subcat: r['課程子分類']||'',
+      emails: new Set(), comp: 0, watchMin: 0
+    };
+    courseMap[name].emails.add(r['員工信箱']);
+    if (r['完課狀態']==='已完課') courseMap[name].comp++;
+    courseMap[name].watchMin += (Number(r['觀看時間（分）'])||0);
+  });
+
+  const courses = Object.values(courseMap)
+    .map(c => ({ ...c, reg: c.emails.size, watchHr: (c.watchMin/60).toFixed(1) }))
+    .sort((a,b) => b.reg - a.reg);
+
+  // 清單中有但完全沒人冊課的課程名稱
+  const foundNames = new Set(courses.map(c => c.name));
+  const notFound = [...targetNames].filter(n => !foundNames.has(n));
+
+  return { courses, notFound };
+}
+
+function processTraffic(lineData, limit) {
+  const dateMax={};
+  lineData.forEach(r=>{
+    const dt=r['local_datetime_axis']||'';
+    const val=Number(r['上線人數'])||0;
+    const m=dt.match(/(\d{4})年(\d+)月(\d+)日/);
+    if(m){
+      const k=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+      dateMax[k]=Math.max(dateMax[k]||0,val);
+    }
+  });
+  const dates=Object.keys(dateMax).sort();
+  const vals=dates.map(d=>dateMax[d]);
+  const maxVal=Math.max(...vals,0);
+  const exceeded=dates.filter(d=>dateMax[d]>=limit);
+  return {dates,vals,maxVal,exceeded,limit};
+}
+
+function deltaLabel(v1, v2) {
+  // Accept both string and number; strip any non-numeric chars (e.g. %) before parsing
+  const n1 = parseFloat(String(v1).replace(/[^0-9.\-]/g, ''));
+  const n2 = parseFloat(String(v2).replace(/[^0-9.\-]/g, ''));
+  if(isNaN(n1)||isNaN(n2)||n1===0) return '';
+  const d=((n2-n1)/Math.abs(n1)*100);
+  if(isNaN(d)||!isFinite(d)) return '';
+  const cls=d>0?'up':d<0?'dn':'flat';
+  const sign=d>0?'↑':d<0?'↓':'';
+  return `<span class="kpi-delta ${cls}">${sign}${Math.abs(d).toFixed(1)}%</span>`;
+}
+
+
+function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
+  const yoy=!!(monthlyReg2&&monthlyComp2);
+  let months,regVals,compVals,regVals2=null,compVals2=null;
+  if(yoy){
+    const mmSet=new Set([...Object.keys(monthlyReg),...Object.keys(monthlyReg2)].map(k=>k.slice(5,7)));
+    months=[...mmSet].sort();
+    regVals=months.map(m=>Object.entries(monthlyReg).filter(([k])=>k.slice(5,7)===m).reduce((s,[,v])=>s+v,0));
+    compVals=months.map(m=>Object.entries(monthlyComp).filter(([k])=>k.slice(5,7)===m).reduce((s,[,v])=>s+v,0));
+    regVals2=months.map(m=>Object.entries(monthlyReg2).filter(([k])=>k.slice(5,7)===m).reduce((s,[,v])=>s+v,0));
+    compVals2=months.map(m=>Object.entries(monthlyComp2).filter(([k])=>k.slice(5,7)===m).reduce((s,[,v])=>s+v,0));
+  } else {
+    // maxRegMonth = latest month with any registration
+    const maxRegMonth=Object.keys(monthlyReg).sort().pop()||'9999-99';
+    // X axis: only months up to maxRegMonth
+    months=Object.keys({...monthlyReg,...monthlyComp}).filter(m=>m<=maxRegMonth).sort();
+    regVals=months.map(m=>monthlyReg[m]||0);
+    // comp: only count completions within maxRegMonth
+    compVals=months.map(m=>m<=maxRegMonth?(monthlyComp[m]||0):0);
+  }
+  const allVals=[...regVals,...compVals,...(regVals2||[]),...(compVals2||[])];
+  const maxM=Math.max(...allVals,1);
+  const W=700,H=220,pl=44,pr=20,pt=42,pb=34;
+  const cW=W-pl-pr,cH=H-pt-pb,n=months.length;
+  if(n===0) return '';
+  const barW=Math.min(28,cW/n*(monthlyReg2?0.22:0.45));
+  const xPos=i=>pl+(i+0.5)*(cW/n);
+  const yPos=v=>pt+cH-(v/maxM*cH);
+
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">`;
+  // grid
+  [0,Math.round(maxM*0.33),Math.round(maxM*0.66),maxM].forEach(v=>{
+    const y=yPos(v);
+    svg+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#E4E0DA" stroke-width="0.7"/>`;
+    svg+=`<text x="${pl-5}" y="${y+4}" text-anchor="end" font-size="9" fill="#B0AAA2">${v}</text>`;
+  });
+  // legend
+  const legendY=pt-26;
+  if(yoy){
+    svg+=`<rect x="${pl}" y="${legendY-9}" width="9" height="8" rx="2" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1"/>`;
+    svg+=`<text x="${pl+13}" y="${legendY}" font-size="9" fill="#7A756E">Y1 註冊</text>`;
+    svg+=`<circle cx="${pl+60}" cy="${legendY-4}" r="3.5" fill="#007A70"/>`;
+    svg+=`<text x="${pl+67}" y="${legendY}" font-size="9" fill="#7A756E">Y1 完課</text>`;
+    svg+=`<rect x="${pl+115}" y="${legendY-9}" width="9" height="8" rx="2" fill="#FEF3C7" stroke="#D97706" stroke-width="1.1"/>`;
+    svg+=`<text x="${pl+128}" y="${legendY}" font-size="9" fill="#7A756E">Y2 註冊</text>`;
+    svg+=`<circle cx="${pl+178}" cy="${legendY-4}" r="3.5" fill="#B45309"/>`;
+    svg+=`<text x="${pl+185}" y="${legendY}" font-size="9" fill="#7A756E">Y2 完課</text>`;
+  } else {
+    svg+=`<rect x="${pl}" y="${legendY-9}" width="9" height="8" rx="2" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1"/>`;
+    svg+=`<text x="${pl+13}" y="${legendY}" font-size="9" fill="#7A756E">月度註冊數</text>`;
+    svg+=`<circle cx="${pl+80}" cy="${legendY-4}" r="3.5" fill="#D97706"/>`;
+    svg+=`<text x="${pl+87}" y="${legendY}" font-size="9" fill="#7A756E">月度完課數</text>`;
+  }
+  // bars + lines
+  let lp1='', lp2='';
+  months.forEach((m,i)=>{
+    const x=xPos(i);
+    if(yoy){
+      const bw=Math.min(barW*0.85, (cW/months.length)*0.38);
+      const gap=bw*0.3;
+      const x1=x-bw/2-gap, x2=x+gap/2;
+      const rv1=regVals[i], rv2=regVals2[i];
+      const cv1=compVals[i], cv2=compVals2[i];
+      // Y1: teal family, Y2: amber family
+      svg+=`<rect x="${x1}" y="${yPos(rv1)}" width="${bw}" height="${cH-(yPos(rv1)-pt)}" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1" rx="2"/>`;
+      if(rv1>0) svg+=`<text x="${x1+bw/2}" y="${yPos(rv1)-4}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#00968A">${rv1}</text>`;
+      svg+=`<rect x="${x2}" y="${yPos(rv2)}" width="${bw}" height="${cH-(yPos(rv2)-pt)}" fill="#FEF3C7" stroke="#D97706" stroke-width="1.1" rx="2"/>`;
+      if(rv2>0) svg+=`<text x="${x2+bw/2}" y="${yPos(rv2)-4}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#D97706">${rv2}</text>`;
+      const cx1=x1+bw/2, cx2=x2+bw/2;
+      if(i===0){lp1=`M${cx1},${yPos(cv1)}`;lp2=`M${cx2},${yPos(cv2)}`;}
+      else{lp1+=` L${cx1},${yPos(cv1)}`;lp2+=` L${cx2},${yPos(cv2)}`;}
+      if(cv1>0) svg+=`<text x="${cx1}" y="${yPos(cv1)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#007A70">${cv1}</text>`;
+      if(cv2>0) svg+=`<text x="${cx2}" y="${yPos(cv2)-7}" text-anchor="middle" font-size="7.5" font-weight="600" fill="#B45309">${cv2}</text>`;
+      const lbl=m+'月';
+      svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
+    } else {
+      const rv=regVals[i], cv=compVals[i];
+      svg+=`<rect x="${x-barW/2}" y="${yPos(rv)}" width="${barW}" height="${cH-(yPos(rv)-pt)}" fill="#E3F4F2" stroke="#00968A" stroke-width="1.1" rx="2"/>`;
+      svg+=`<text x="${x}" y="${yPos(rv)-4}" text-anchor="middle" font-size="8" font-weight="600" fill="#00968A">${rv}</text>`;
+      if(i===0) lp1=`M${x},${yPos(cv)}`; else lp1+=` L${x},${yPos(cv)}`;
+      svg+=`<text x="${x}" y="${yPos(cv)-7}" text-anchor="middle" font-size="8" font-weight="600" fill="#D97706">${cv}</text>`;
+      const lbl=m.length>=7?m.slice(0,4)+'/'+m.slice(5,7):m;
+      svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
+    }
+  });
+  // Y1 line: deep teal; Y2 line: deep amber
+  svg+=`<path d="${lp1}" fill="none" stroke="#007A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  months.forEach((m,i)=>{
+    const x=xPos(i);
+    const cx=yoy?x-Math.min(barW*0.85,(cW/months.length)*0.38)/2-Math.min(barW*0.85,(cW/months.length)*0.38)*0.15:x;
+    svg+=`<circle cx="${cx}" cy="${yPos(compVals[i])}" r="3" fill="#007A70"/>`;
+  });
+  if(yoy&&lp2){
+    svg+=`<path d="${lp2}" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    months.forEach((m,i)=>{
+      const x=xPos(i), bw=Math.min(barW*0.85,(cW/months.length)*0.38), gap=bw*0.3, cx2=x+gap/2+bw/2;
+      svg+=`<circle cx="${cx2}" cy="${yPos(compVals2[i])}" r="3" fill="#B45309"/>`;
+    });
+  }
+  svg+='</svg>';
+  return svg;
+}
+
+function trafficSVG(trafficData) {
+  if(!trafficData||!trafficData.dates.length) return '';
+  const {dates,vals,limit}=trafficData;
+  const W=700,H=180,pl=32,pr=20,pt=36,pb=28;
+  const cW=W-pl-pr,cH=H-pt-pb,n=dates.length;
+  const maxV=Math.max(...vals,limit+2,1);
+  const yPos=v=>pt+cH-(v/maxV*cH);
+  const barW=Math.max(1,cW/n*0.9);
+  let bars='',peakLbls='',xLbls='',grid='',prevMonth='';
+  [0,Math.round(maxV*0.33),Math.round(maxV*0.66),maxV].forEach(v=>{
+    const y=yPos(v);
+    grid+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#E4E0DA" stroke-width="0.6"/>`;
+    grid+=`<text x="${pl-5}" y="${y+4}" text-anchor="end" font-size="8.5" fill="#B0AAA2">${v}</text>`;
+  });
+  dates.forEach((date,i)=>{
+    const v=vals[i],x=pl+i*(cW/(n-1||1));
+    const color=v>=limit?'rgba(220,38,38,0.85)':v>=limit-1?'rgba(217,119,6,0.8)':'rgba(0,150,138,0.4)';
+    bars+=`<rect x="${x-barW/2}" y="${yPos(v)}" width="${barW}" height="${cH-(yPos(v)-pt)}" fill="${color}" rx="1"/>`;
+    if(v>=limit-1) peakLbls+=`<text x="${x}" y="${yPos(v)-3}" text-anchor="middle" font-size="8" font-weight="700" fill="${v>=limit?'#DC2626':'#D97706'}">${v}</text>`;
+    const m=date.slice(0,7);
+    if(m!==prevMonth){xLbls+=`<text x="${x}" y="${H-4}" text-anchor="middle" font-size="8.5" fill="#7A756E">${m.replace('-','/')}</text>`;prevMonth=m;}
+  });
+  const limitY=yPos(limit);
+  const lx=pl,ly=pt-20;
+  let legend='';
+  legend+=`<rect x="${lx}" y="${ly-9}" width="9" height="8" rx="1" fill="rgba(0,150,138,0.4)"/>`;
+  legend+=`<text x="${lx+13}" y="${ly}" font-size="9" fill="#7A756E">每日最高在線</text>`;
+  legend+=`<rect x="${lx+95}" y="${ly-9}" width="9" height="8" rx="1" fill="rgba(217,119,6,0.8)"/>`;
+  legend+=`<text x="${lx+108}" y="${ly}" font-size="9" fill="#7A756E">差 1 人達上限</text>`;
+  legend+=`<rect x="${lx+185}" y="${ly-9}" width="9" height="8" rx="1" fill="rgba(220,38,38,0.85)"/>`;
+  legend+=`<text x="${lx+198}" y="${ly}" font-size="9" fill="#7A756E">≥ 上限（${limit}人）</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
+    ${grid}${bars}
+    <line x1="${pl}" y1="${limitY}" x2="${W-pr}" y2="${limitY}" stroke="rgba(220,38,38,0.6)" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="${W-pr-2}" y="${limitY-3}" text-anchor="end" font-size="8.5" fill="rgba(220,38,38,0.7)" font-weight="600">上限 ${limit}</text>
+    ${peakLbls}${xLbls}${legend}
+  </svg>`;
+}
+
+function pieSVG(data, title, colors) {
+  const total=data.reduce((s,d)=>s+d.v,0);
+  if(!total) return '';
+  const W=120,H=120,cx=60,cy=60,R=48,iR=28;
+  let startAngle=-Math.PI/2, paths='';
+  data.forEach((d,i)=>{
+    const angle=(d.v/total)*Math.PI*2;
+    const endAngle=startAngle+angle;
+    const x1=cx+R*Math.cos(startAngle),y1=cy+R*Math.sin(startAngle);
+    const x2=cx+R*Math.cos(endAngle),y2=cy+R*Math.sin(endAngle);
+    const xi1=cx+iR*Math.cos(startAngle),yi1=cy+iR*Math.sin(startAngle);
+    const xi2=cx+iR*Math.cos(endAngle),yi2=cy+iR*Math.sin(endAngle);
+    const large=angle>Math.PI?1:0;
+    paths+=`<path d="M${xi1},${yi1} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} L${xi2},${yi2} A${iR},${iR} 0 ${large},0 ${xi1},${yi1}" fill="${colors[i%colors.length]}"/>`;
+    startAngle=endAngle;
+  });
+  const pct=data.map(d=>Math.round(d.v/total*100));
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100px;height:100px">${paths}</svg>`;
+}
+
+
+const HAHOW_CATS=new Set(['經營領導','組織治理','核心職能','多元生活','專業職能']);
+// Hahow 5 cats: distinct teal/green/blue tones; enterprise: amber/purple/red tones
+const HAHOW_CAT_COLORS=['#00968A','#F59E0B','#3B82F6','#A855F7','#10B981'];
+const ENT_CAT_COLORS=['#EF4444','#F97316','#6366F1','#EC4899','#84CC16','#0EA5E9'];
+function catColor(catName, idx) {
+  if(HAHOW_CATS.has(catName)) {
+    const order=['核心職能','經營領導','組織治理','專業職能','多元生活'];
+    const i=order.indexOf(catName); return HAHOW_CAT_COLORS[i>=0?i:idx%5];
+  }
+  return ENT_CAT_COLORS[idx%6];
+}
+
+function chunkRows(items, maxCols) {
+  let out='';
+  for(let i=0;i<items.length;i+=maxCols){
+    const chunk=items.slice(i,i+maxCols);
+    const cols=chunk.length;
+    // Last row: keep card width same as full rows by using maxCols template,
+    // but only render `cols` cells (left-aligned, remaining grid cells stay empty)
+    out+=`<div style="display:grid;grid-template-columns:repeat(${maxCols},1fr);gap:12px;margin-bottom:12px">${chunk.join('')}</div>`;
+  }
+  return out;
+}
+
+function renderKPIs(m1, m2, y1label, y2label) {
+  const yoy=modules.yoy&&m2;
+  let html='';
+  // Row 1: unique learners + activation + totals
+  const kpis1=[];
+  if(isOn('f-unique')) kpis1.push(yoy
+    ? kpiYoY('不重複學習人數',m1.uniqueLearners,'人',m2.uniqueLearners,'人',y1label,y2label)
+    : kpiCard('不重複學習人數',m1.uniqueLearners,'人','有實際註冊至少一堂課程',true));
+  if(isOn('f-activation')) kpis1.push(yoy
+    ? kpiYoY('帳號啟用率',m1.activationRate+'%','',m2.activationRate+'%','',y1label,y2label)
+    : kpiCard('帳號啟用率',m1.activationRate,'%',`${m1.activatedCount} / ${m1.nonRemovedCount} 人`));
+  if(isOn('f-totalreg')) kpis1.push(yoy
+    ? kpiYoY('註冊課程總數',m1.totalReg.toLocaleString(),'筆',m2.totalReg.toLocaleString(),'筆',y1label,y2label)
+    : kpiCard('註冊課程總數',m1.totalReg.toLocaleString(),'筆',''));
+  if(isOn('f-totalcomp')) kpis1.push(yoy
+    ? kpiYoY('完成課程總數',m1.totalComp.toLocaleString(),'筆',m2.totalComp.toLocaleString(),'筆',y1label,y2label)
+    : kpiCard('完成課程總數',m1.totalComp.toLocaleString(),'筆',''));
+  if(isOn('f-totalhr')&&!yoy) kpis1.push(kpiCard('學習總時數',m1.totalHr,'hr','所有學員觀看時間加總'));
+  if(isOn('f-comprate')&&!yoy) kpis1.push(kpiCard('整體完課率',m1.overallCompRate,'%','完成 / 已註冊課程',true));
+  if(yoy){
+    // YoY mode: combine ALL kpis into one array, then chunk together as 3-per-row
+    const yoyAll=[...kpis1];
+    if(isOn('f-comprate')) yoyAll.push(kpiYoY('整體完課率',m1.overallCompRate+'%','',m2.overallCompRate+'%','',y1label,y2label));
+    if(isOn('f-totalhr')) yoyAll.push(kpiYoY('學習總時數',m1.totalHr,'hr',m2.totalHr,'hr',y1label,y2label));
+    if(isOn('f-avgreg')) yoyAll.push(kpiYoY('人均註冊數',m1.avgRegPerLearner,'堂',m2.avgRegPerLearner,'堂',y1label,y2label));
+    if(isOn('f-avgcomp')) yoyAll.push(kpiYoY('人均完課數',m1.avgCompPerLearner,'堂',m2.avgCompPerLearner,'堂',y1label,y2label));
+    if(isOn('f-avghr')) yoyAll.push(kpiYoY('人均學習時數',m1.avgHrPerLearner,'hr',m2.avgHrPerLearner,'hr',y1label,y2label));
+    if(yoyAll.length) html+=chunkRows(yoyAll,3);
+  } else {
+    const kpis2=[...kpis1];
+    if(isOn('f-avgreg')) kpis2.push(kpiCard('人均註冊數',m1.avgRegPerLearner,'堂','以不重複學習人數為分母'));
+    if(isOn('f-avgcomp')) kpis2.push(kpiCard('人均完課數',m1.avgCompPerLearner,'堂','以不重複學習人數為分母'));
+    if(isOn('f-avghr')) kpis2.push(kpiCard('人均學習時數',m1.avgHrPerLearner,'hr','以不重複學習人數為分母'));
+    if(kpis2.length) html+=chunkRows(kpis2,3);
+  }
+  return html;
+}
+
+function kpiCard(label, val, unit, sub, hl=false) {
+  return `<div class="kpi-card${hl?' hl':''}">
+    <div class="kpi-lbl">${label}</div>
+    <div class="kpi-val">${val}<span class="u">${unit}</span></div>
+    ${sub?`<div class="kpi-sub">${sub}</div>`:''}
+  </div>`;
+}
+
+function kpiYoY(label, v1, u1, v2, u2, y1l, y2l) {
+  const delta=deltaLabel(String(v1).replace('%',''), String(v2).replace('%',''));
+  return `<div class="kpi-card">
+    <div class="kpi-lbl">${label}</div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--muted)">${y1l||'第一年'}</span>
+      <span style="font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap">${v1}<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px">${u1}</span></span>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border)">
+      <span style="font-size:11px;color:var(--muted)">${y2l||'第二年'}</span>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        ${delta}
+        <span style="font-size:20px;font-weight:700;color:var(--ink);white-space:nowrap">${v2}<span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:2px">${u2}</span></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function assignSplitPieSVG(valA, valS, colorA, colorS) {
+  const total = parseFloat(valA) + parseFloat(valS);
+  if(!total) return '';
+  const W=110,H=110,cx=55,cy=55,R=44,ir=26;
+  const angA = Math.max(0.01, Math.min(Math.PI*2-0.01, (parseFloat(valA)/total)*Math.PI*2));
+  function arc(startAng, endAng, large) {
+    const x1=cx+R*Math.cos(startAng),y1=cy+R*Math.sin(startAng);
+    const x2=cx+R*Math.cos(endAng),y2=cy+R*Math.sin(endAng);
+    const xi1=cx+ir*Math.cos(startAng),yi1=cy+ir*Math.sin(startAng);
+    const xi2=cx+ir*Math.cos(endAng),yi2=cy+ir*Math.sin(endAng);
+    return `M${xi1},${yi1} L${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} L${xi2},${yi2} A${ir},${ir} 0 ${large},0 ${xi1},${yi1}`;
+  }
+  const start=-Math.PI/2, mid=start+angA, end=start+Math.PI*2;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:90px;height:90px">
+    <path d="${arc(start,mid,angA>Math.PI?1:0)}" fill="${colorA}"/>
+    <path d="${arc(mid,end,(Math.PI*2-angA)>Math.PI?1:0)}" fill="${colorS}"/>
+  </svg>`;
+}
+
+function renderAssignPies(d) {
+  if(!d) return '';
+  const teal='#00968A', amberL='rgba(217,119,6,0.18)', amber='#D97706';
+  const charts=[
+    {label:'註冊堂數', valA:d.regA, valS:d.regS, unit:'筆'},
+    {label:'完課堂數', valA:d.compA, valS:d.compS, unit:'筆'},
+    {label:'學習時數', valA:parseFloat(d.hrA), valS:parseFloat(d.hrS), unit:'hr'},
+  ];
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+    ${charts.map(c=>{
+      const total=(c.valA+c.valS)||1;
+      const pctA=Math.round(c.valA/total*100);
+      const pctS=100-pctA;
+      const fmtNum=(v,u)=>u==='hr'?parseFloat(v).toFixed(1)+' hr':Number(v).toLocaleString()+' 筆';
+      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+        <div style="font-size:11px;font-weight:600;color:var(--ink);margin-bottom:10px">${c.label}</div>
+        <div style="display:flex;justify-content:center">${assignSplitPieSVG(c.valA,c.valS,teal,amberL)}</div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:10px">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${teal};display:inline-block"></span>指派 ${pctA}%</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${amberL};border:1px solid ${amber};display:inline-block"></span>自學 ${pctS}%</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:11px">
+          <tr><td style="text-align:left;color:var(--muted);padding:2px 0">指派</td><td style="text-align:right;font-weight:600;padding:2px 0">${fmtNum(c.valA,c.unit)}</td></tr>
+          <tr><td style="text-align:left;color:var(--muted);padding:2px 0">自學</td><td style="text-align:right;font-weight:600;padding:2px 0">${fmtNum(c.valS,c.unit)}</td></tr>
+        </table>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderCatTableHahow(catMap, catWatchMap) {
+  return catTableRows(catMap, catWatchMap, 'hahow');
+}
+function renderCatTableEnterprise(catMap, catWatchMap) {
+  return catTableRows(catMap, catWatchMap, 'enterprise');
+}
+function catTableRows(catMap, catWatchMap, filter) {
+  return Object.entries(catMap)
+    .filter(([cat])=> filter==='hahow' ? HAHOW_CATS.has(cat) : !HAHOW_CATS.has(cat))
+    .sort((a,b)=>(b[1].comp/b[1].total)-(a[1].comp/a[1].total))
+    .map(([cat,v])=>{
+      const rate=(v.comp/v.total*100).toFixed(1);
+      const pc=rate>=85?'pill-g':rate>=70?'pill-t':'pill-a';
+      const watchHr=((catWatchMap[cat]||0)/60).toFixed(0);
+      return `<tr><td><b>${cat}</b></td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr} hr</td></tr>`;
+    }).join('');
+}
+
+function slideTop10Table(list, subtitle) {
+  const rankCls=['g1','g2','g3','','','','','','',''];
+  const rows=list.map((c,i)=>{
+    const rate=Math.round(c.comp/Math.max(c.reg,1)*100);
+    const pc=rate>=90?'pill-g':rate>=70?'pill-t':'pill-a';
+    const catLine=[c.cat,c.subcat].filter(Boolean).join(' · ');
+    return `<tr>
+      <td style="padding:2px 4px"><span class="rank-n ${rankCls[i]||''}" style="width:15px;height:15px;font-size:9px">${i+1}</span></td>
+      <td style="padding:3px 5px"><div style="font-weight:500;font-size:10px;line-height:1.1">${c.name}</div>
+          <div style="font-size:8.5px;color:var(--faint)">${catLine}</div></td>
+      <td class="r" style="padding:1px 3px;font-weight:600;font-size:9.5px">${c.reg}</td>
+      <td class="r" style="padding:2px 4px"><span class="pill ${pc}" style="font-size:8.5px;padding:1px 4px">${rate}%</span></td>
+    </tr>`;
+  }).join('');
+  return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px">
+    <div style="font-size:9px;color:var(--faint);margin-bottom:4px">${subtitle}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="width:18px;padding:3px 5px;text-align:left;font-size:8.5px;color:var(--faint);border-bottom:1px solid var(--border)">#</th>
+        <th style="padding:3px 5px;text-align:left;font-size:8.5px;color:var(--faint);border-bottom:1px solid var(--border)">課程名稱</th>
+        <th style="padding:3px 5px;text-align:right;font-size:8.5px;color:var(--faint);border-bottom:1px solid var(--border)">人數</th>
+        <th style="padding:3px 5px;text-align:right;font-size:8.5px;color:var(--faint);border-bottom:1px solid var(--border)">完課率</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderCatTable(catMap, catWatchMap) {
+  const hahow=[], enterprise=[];
+  Object.entries(catMap).forEach(([cat,v])=>{
+    (HAHOW_CATS.has(cat)?hahow:enterprise).push([cat,v]);
+  });
+  hahow.sort((a,b)=>(b[1].comp/b[1].total)-(a[1].comp/a[1].total));
+  enterprise.sort((a,b)=>(b[1].comp/b[1].total)-(a[1].comp/a[1].total));
+  function rows(list, tag) {
+    return list.map(([cat,v])=>{
+      const rate=(v.comp/v.total*100).toFixed(1);
+      const pc=rate>=85?'pill-g':rate>=70?'pill-t':'pill-a';
+      const watchHr=((catWatchMap[cat]||0)/60).toFixed(0);
+      const badge=`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-left:5px;background:${tag==='hahow'?'var(--teal-l)':'var(--amber-l)'};color:${tag==='hahow'?'var(--teal)':'var(--amber)'}">${tag==='hahow'?'Hahow':'企業'}</span>`;
+      return `<tr><td><b>${cat}</b>${badge}</td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr} hr</td></tr>`;
+    }).join('');
+  }
+  let html=rows(hahow,'hahow');
+  if(enterprise.length){
+    html+=`<tr><td colspan="5" style="padding:6px 10px;font-size:10px;font-weight:700;color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;background:var(--amber-l);-webkit-print-color-adjust:exact;print-color-adjust:exact">企業自訂課程</td></tr>`;
+    html+=rows(enterprise,'enterprise');
+  }
+  return html;
+}
+
+function renderPies(catMap, catWatchMap) {
+  const cats=Object.keys(catMap);
+  const colors=cats.map((c,i)=>catColor(c,i));
+  const regData=cats.map((c,i)=>({label:c,v:catMap[c].total,color:colors[i]}));
+  const compData=cats.map((c,i)=>({label:c,v:catMap[c].comp,color:colors[i]}));
+  const watchData=cats.map((c,i)=>({label:c,v:catWatchMap[c]||0,color:colors[i]}));
+  function pieCard(title, data) {
+    const total=data.reduce((s,d)=>s+d.v,0);
+    const svg=pieSVG(data,title,colors);
+    const legend=data.map(d=>`<div class="pie-legend-item"><span class="pie-dot" style="background:${d.color}"></span>${d.label} ${total?Math.round(d.v/total*100)+'%':'—'}</div>`).join('');
+    return `<div class="pie-card">
+      <div class="pie-card-title">${title}</div>
+      <div style="display:flex;justify-content:center">${svg}</div>
+      <div class="pie-legend">${legend}</div>
+    </div>`;
+  }
+  return `<div class="pie-row">
+    ${pieCard('各分類註冊比例',regData)}
+    ${pieCard('各分類完課比例',compData)}
+    ${pieCard('各分類觀看時數比例',watchData)}
+  </div>`;
+}
+
+function top10rows(list) {
+  const rankCls=['g1','g2','g3','','','','','','',''];
+  return list.map((c,i)=>{
+    const rate=Math.round(c.comp/Math.max(c.reg,1)*100);
+    const pc=rate>=90?'pill-g':rate>=70?'pill-t':'pill-a';
+    const catLine=[c.cat,c.subcat].filter(Boolean).join(' · ');
+    return `<tr>
+      <td><span class="rank-n ${rankCls[i]||''}">${i+1}</span></td>
+      <td><div style="font-weight:500;font-size:12px;line-height:1.3">${c.name}</div>
+          <div style="font-size:10px;color:var(--faint)">${catLine}</div></td>
+      <td class="r" style="font-weight:600">${c.reg}</td>
+      <td class="r"><span class="pill ${pc}">${rate}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDeptBars(deptStats) {
+  const maxHr=Math.max(...deptStats.map(d=>parseFloat(d.avgHr)),1);
+  const maxVal=Math.max(...deptStats.map(d=>Math.max(parseFloat(d.avgComp),parseFloat(d.avgReg))),1);
+  const BAR=170;
+  return deptStats.map(d=>{
+    const hrW=Math.round(parseFloat(d.avgHr)/maxHr*BAR);
+    const cW=Math.round(parseFloat(d.avgComp)/maxVal*BAR);
+    const rW=Math.round(parseFloat(d.avgReg)/maxVal*BAR);
+    const actRate=parseFloat(d.activationRate)||0;
+    const actPill=actRate>=100
+      ?`<span class="pill pill-g" style="font-size:10px">全員啟用</span>`
+      :`<span class="pill pill-r" style="font-size:10px">${d.notActivated} 人未啟用</span>`;
+    const zeroPill=d.zeroCount>0
+      ?`<span class="pill pill-r" style="font-size:10px">${d.zeroCount} 人未學習</span>`
+      :`<span class="pill pill-g" style="font-size:10px">全員有學習</span>`;
+    const outlierRow=(d.outliers&&d.outliers.length)
+      ? `<tr><td colspan="5" style="padding:3px 9px 8px 9px">
+          ${d.outliers.map(o=>`<div style="font-size:10px;color:var(--amber);background:var(--amber-l);border-radius:4px;padding:3px 8px;display:inline-block;margin:2px 2px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact">⚠ ${o.name} 為特別活躍之學員，單人學習時數達 ${o.hr.toFixed(1)} hr</div>`).join('')}
+        </td></tr>`
+      : '';
+    return `<tr class="dr">
+      <td style="min-width:100px;max-width:160px"><div class="dept-nm" title="${d.dept}">${truncDept(d.dept)}</div><div class="dept-n2">n=${d.n}</div></td>
+      <td><div class="hbw">
+        <div class="hbr"><div class="hbl" style="color:var(--teal)">時數</div><div class="hb" style="width:${hrW}px;background:rgba(0,150,138,0.75)"></div><div class="hbv" style="color:var(--teal);font-weight:600">${d.avgHr}hr</div></div>
+        <div class="hbr"><div class="hbl" style="color:var(--teal-m)">完課</div><div class="hb" style="width:${cW}px;background:rgba(77,184,176,0.8)"></div><div class="hbv">${d.avgComp}</div></div>
+        <div class="hbr"><div class="hbl" style="color:var(--amber)">註冊</div><div class="hb" style="width:${rW}px;background:rgba(217,119,6,0.55)"></div><div class="hbv">${d.avgReg}</div></div>
+      </div></td>
+      <td style="text-align:right;font-weight:600;font-size:11px;color:${actRate>=100?'var(--green)':actRate>=80?'var(--teal)':'var(--amber)'}">${d.activationRate}%</td>
+      <td>${actPill}</td>
+      <td>${zeroPill}</td>
+    </tr>${outlierRow}`;
+  }).join('');
+}
+function renderHeatmap(deptStats) {
+  const allCats=[...new Set(deptStats.flatMap(d=>Object.keys(d.catCounts)))].sort();
+  const maxPerCat={};
+  allCats.forEach(cat=>{
+    maxPerCat[cat]=Math.max(...deptStats.map(d=>d.catCounts[cat]||0),1);
+  });
+  function heatColor(v, maxV) {
+    if(!v) return 'background:var(--bg2);color:var(--faint)';
+    const t=v/maxV;
+    const r=Math.round(247-t*(247-0)),g=Math.round(246-t*(246-150)),b=Math.round(243-t*(243-138));
+    const textColor=t>0.5?'white':'var(--ink)';
+    return `background:rgb(${r},${g},${b});color:${textColor}`;
+  }
+  let html=`<table class="heat-table"><thead><tr><th>部門</th>`;
+  allCats.forEach(c=>html+=`<th>${c}</th>`);
+  html+=`<th class="heat-tend">主要傾向</th></tr></thead><tbody>`;
+  deptStats.slice(0,12).forEach(d=>{
+    html+=`<tr><td style="min-width:90px;max-width:140px"><div class="dept-nm" title="${d.dept}">${truncDept(d.dept,12)}</div><div class="dept-n2">n=${d.n}</div></td>`;
+    allCats.forEach(cat=>{
+      const v=d.catCounts[cat]||0;
+      html+=`<td style="${heatColor(v,maxPerCat[cat])}">${v||''}</td>`;
+    });
+    // top subcat for 主要傾向
+    const topSubcat=Object.entries(d.subcatCounts||{}).sort((a,b)=>b[1]-a[1]);
+    const tendText=topSubcat.slice(0,2).map(([c])=>c).join('、')||'—';
+    html+=`<td class="heat-tend">${tendText}</td></tr>`;
+  });
+  html+=`</tbody></table>`;
+  return html;
+}
+
+function assignRows(assignBatches) {
+  return assignBatches.map(b=>{
+    const rate=(b.comp/Math.max(b.total,1)*100).toFixed(1);
+    const pc=parseFloat(rate)>=50?'pill-g':parseFloat(rate)>=30?'pill-t':'pill-a';
+    const note=b.courseCount>1?`<div style="font-size:10px;color:var(--faint)">${b.courseCount} 堂課全數完成才算完課</div>`:'';
+    return `<tr><td><div style="font-weight:500">${b.name}</div>${note}</td><td class="r">${b.total} 人</td><td class="r"><span class="pill ${pc}">${rate}%</span></td></tr>`;
+  }).join('');
+}
+
+function customListRows(courses) {
+  return courses.map(c=>{
+    const rate=Math.round(c.comp/Math.max(c.reg,1)*100);
+    const pc=rate>=90?'pill-g':rate>=70?'pill-t':'pill-a';
+    const catLine=[c.cat,c.subcat].filter(Boolean).join(' · ');
+    return `<tr>
+      <td><div style="font-weight:500;font-size:12px">${c.name}</div><div style="font-size:10px;color:var(--faint)">${catLine}</div></td>
+      <td class="r" style="font-weight:600">${c.reg}</td>
+      <td class="r">${c.comp}</td>
+      <td class="r"><span class="pill ${pc}">${rate}%</span></td>
+      <td class="r">${c.watchHr} hr</td>
+    </tr>`;
+  }).join('');
+}
+
+
+function buildSections(d) {
+  const {clientName,dateFrom,dateTo,m1,m2,y1label,y2label,
+    deptStats,assignBatches,topAll,topSelf,trafficData,customListData,assignSplitData,insights,modules}=d;
+  // For cat/pie/heatmap analyses: use m2 when YoY is on
+  const mPrimary = (modules.yoy && m2) ? m2 : m1;
+  const sections=[];
+
+  // KPIs
+  const kpiHtml=renderKPIs(m1,m2,y1label,y2label);
+  if(kpiHtml) sections.push({eyebrow:'整體指標',title:'平台使用概況',content:kpiHtml,insight:insights?.overview});
+
+  // Trend
+  if(isOn('f-trend')) {
+    const svg=monthlyChartSVG(m1.monthlyReg,m1.monthlyComp,m2?.monthlyReg,m2?.monthlyComp);
+    sections.push({eyebrow:'趨勢分析',title:'每月學習趨勢',content:`
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 12px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px">月度註冊 vs 完課數量</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:14px">${dateFrom} – ${dateTo}｜課程總紀錄筆數${modules.yoy?`（${y1label} vs ${y2label}）`:''}</div>
+        ${svg}
+      </div>`,insight:insights?.trend});
+  }
+
+  // Category
+  if(isOn('f-cattable')||isOn('f-catpie')) {
+    if(viewMode==='slides' && isOn('f-cattable')) {
+      // Split Hahow / Enterprise into separate slides
+      sections.push({eyebrow:'課程學習',title:'各分類完課表現 — Hahow 官方課程',content:`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <table class="rtable">
+            <thead><tr><th>課程主分類</th><th class="r">總註冊數</th><th class="r">完課數</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
+            <tbody>${renderCatTableHahow(mPrimary.catMap,mPrimary.catWatchMap)}</tbody>
+          </table>
+        </div>`,insight:insights?.category});
+      const entRows=renderCatTableEnterprise(mPrimary.catMap,mPrimary.catWatchMap);
+      if(entRows) sections.push({eyebrow:'課程學習',title:'各分類完課表現 — 企業自訂課程',content:`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <table class="rtable">
+            <thead><tr><th>課程主分類</th><th class="r">總註冊數</th><th class="r">完課數</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
+            <tbody>${entRows}</tbody>
+          </table>
+        </div>`,insight:null});
+      if(isOn('f-catpie')) sections.push({eyebrow:'課程學習',title:'各分類比例',content:renderPies(mPrimary.catMap,mPrimary.catWatchMap),insight:null});
+    } else {
+      const catContent=[];
+      if(isOn('f-cattable')) catContent.push(`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <table class="rtable">
+            <thead><tr><th>課程主分類</th><th class="r">總註冊數</th><th class="r">完課數</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
+            <tbody>${renderCatTable(mPrimary.catMap,mPrimary.catWatchMap)}</tbody>
+          </table>
+        </div>`);
+      if(isOn('f-catpie')) catContent.push(renderPies(mPrimary.catMap,mPrimary.catWatchMap));
+      if(catContent.length) sections.push({eyebrow:'課程學習',title:'各分類完課表現',content:catContent.join(''),insight:insights?.category});
+    }
+  }
+
+  // Assign
+  if(modules.assign&&assignSplitData&&isOn('f-assignpie')){
+    const pieContent=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+      ${renderAssignPies(assignSplitData)}
+    </div>`;
+    sections.push({eyebrow:'指派課程',title:'指派 vs 自學比例',content:pieContent,insight:null});
+  }
+  if(modules.assign&&assignBatches.length&&isOn('f-assign')){
+    if(viewMode==='slides') {
+      const ASSIGN_PER=4;
+      for(let i=0;i<assignBatches.length;i+=ASSIGN_PER){
+        const chunk=assignBatches.slice(i,i+ASSIGN_PER);
+        const pg=Math.floor(i/ASSIGN_PER)+1;
+        const total=Math.ceil(assignBatches.length/ASSIGN_PER);
+        const titleStr=total>1?`指派任務完成狀況（${pg}/${total}）`:'指派任務完成狀況';
+        sections.push({eyebrow:'指派課程',title:titleStr,content:`
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+            <table class="rtable"><thead><tr><th>班次名稱</th><th class="r">指派人數</th><th class="r">完課率</th></tr></thead>
+            <tbody>${assignRows(chunk)}</tbody></table>
+          </div>`,insight:pg===1?insights?.assign:null});
+      }
+    } else {
+      sections.push({eyebrow:'指派課程',title:'指派任務完成狀況',content:`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <table class="rtable"><thead><tr><th>班次名稱</th><th class="r">指派人數</th><th class="r">完課率</th></tr></thead>
+          <tbody>${assignRows(assignBatches)}</tbody></table>
+        </div>`,insight:insights?.assign});
+    }
+  }
+
+
+
+  // Custom course list
+  if(modules.customlist&&customListData&&isOn('f-customlist')){
+    const { courses, notFound } = customListData;
+
+    if(viewMode==='slides') {
+      const LIST_PER=8;
+      const totalPg=Math.ceil(courses.length/LIST_PER)||1;
+      for(let i=0;i<courses.length;i+=LIST_PER){
+        const chunk=courses.slice(i,i+LIST_PER);
+        const pg=Math.floor(i/LIST_PER)+1;
+        const titleStr=totalPg>1?`內部推廣課程（${pg}/${totalPg}）`:'內部推廣課程';
+        const isLast=(pg===totalPg);
+        sections.push({eyebrow:'自訂課程清單',title:titleStr,content:`
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">依不重複學習人數排序，共 ${courses.length} 堂課程</div>
+            <table class="rtable" style="font-size:11px">
+              <thead><tr><th>課程名稱</th><th class="r">人數</th><th class="r">完課</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
+              <tbody>${customListRows(chunk)}</tbody>
+            </table>
+
+          </div>`,insight:pg===1?insights?.customlist:null});
+      }
+    } else {
+      sections.push({eyebrow:'自訂課程清單',title:'內部推廣課程',content:`
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+          <div style="font-size:11px;color:var(--faint);margin-bottom:14px">依不重複學習人數排序，共 ${courses.length} 堂課程</div>
+          <table class="rtable">
+            <thead><tr><th>課程名稱</th><th class="r">人數</th><th class="r">完課</th><th class="r">完課率</th><th class="r">觀看時數</th></tr></thead>
+            <tbody>${customListRows(courses)}</tbody>
+          </table>
+        </div>`,insight:insights?.customlist});
+    }
+  }
+
+  
+  // Top 10
+  const showAll=isOn('f-top10all'), showSelf=isOn('f-top10self')&&modules.assign;
+  if(showAll||showSelf) {
+    if(viewMode==='slides') {
+      if(showAll&&showSelf){
+        sections.push({eyebrow:'熱門課程',title:'Top 10 選讀課程（含指派）',
+          content:slideTop10Table(topAll,'依不重複學習人數排序'),insight:insights?.topCourses});
+        sections.push({eyebrow:'熱門課程',title:'Top 10 選讀課程（自學傾向）',
+          content:slideTop10Table(topSelf,'排除指派，反映同仁真正的主動選課偏好'),insight:insights?.selfLearning});
+      } else {
+        const list=showAll?topAll:topSelf;
+        const sub=showSelf&&!showAll?'排除指派，反映同仁真正的主動選課偏好':'依不重複學習人數排序';
+        sections.push({eyebrow:'熱門課程',title:'Top 10 選讀課程',
+          content:slideTop10Table(list,sub),insight:insights?.topCourses});
+      }
+    } else {
+      let top10content='';
+      if(showAll&&showSelf){
+        top10content=`<div class="two-col">
+          <div class="card-inner"><div class="card-inner-title">含指派課程</div><div class="card-inner-sub">依不重複學習人數排序</div>
+            <table class="rtable"><thead><tr><th style="width:22px">#</th><th>課程名稱</th><th class="r">人數</th><th class="r">完課率</th></tr></thead>
+            <tbody>${top10rows(topAll)}</tbody></table></div>
+          <div class="card-inner"><div class="card-inner-title">排除指派（自學傾向）</div><div class="card-inner-sub">反映同仁真正的主動選課偏好</div>
+            <table class="rtable"><thead><tr><th style="width:22px">#</th><th>課程名稱</th><th class="r">人數</th><th class="r">完課率</th></tr></thead>
+            <tbody>${top10rows(topSelf)}</tbody></table></div>
+        </div>`;
+      } else {
+        const list=showAll?topAll:topSelf;
+        const subtitle=showSelf&&!showAll?'排除指派，反映同仁真正的主動選課偏好':'依不重複學習人數排序';
+        top10content=`<div class="card-inner"><div class="card-inner-sub">${subtitle}</div>
+          <table class="rtable"><thead><tr><th style="width:22px">#</th><th>課程名稱</th><th class="r">人數</th><th class="r">完課率</th></tr></thead>
+          <tbody>${top10rows(list)}</tbody></table></div>`;
+      }
+      sections.push({eyebrow:'熱門課程',title:'Top 10 選讀課程',content:top10content,insight:insights?.topCourses});
+    }
+  }
+
+  // Dept
+  if(modules.dept&&deptStats.length){
+    const deptContent=[];
+    if(isOn('f-deptbars')){
+      deptContent.push(`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
+        <table class="dept-tbl">
+          <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
+          <tbody>${renderDeptBars(deptStats)}</tbody>
+        </table>
+      </div>`);
+    }
+    if(isOn('f-deptheat')){
+      deptContent.push(`<div style="margin-top:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px;overflow-x:auto">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px">各部門課程主題偏好</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">各部門在不同課程主分類的選課紀錄數（色塊越深代表比例越高）</div>
+        ${renderHeatmap(deptStats)}
+      </div>`);
+    }
+    if(deptContent.length) {
+      // In slides mode, auto-split dept bars if > 8 depts
+      const DEPT_PER_SLIDE=3;
+      if(viewMode==='slides' && isOn('f-deptbars') && deptStats.length>DEPT_PER_SLIDE) {
+        for(let i=0;i<deptStats.length;i+=DEPT_PER_SLIDE){
+          const chunk=deptStats.slice(i,i+DEPT_PER_SLIDE);
+          const pg=Math.floor(i/DEPT_PER_SLIDE)+1;
+          const total=Math.ceil(deptStats.length/DEPT_PER_SLIDE);
+          const chunkContent=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
+            <table class="dept-tbl">
+              <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
+              <tbody>${renderDeptBars(chunk)}</tbody>
+            </table>
+          </div>`;
+          sections.push({eyebrow:'部門分析',title:`部門人均學習指標（${pg}/${total}）`,content:chunkContent,insight:pg===1?insights?.dept:null});
+        }
+        // heat in separate slide
+        if(isOn('f-deptheat')){
+          const HEAT_PER=4;
+          for(let hi=0;hi<deptStats.length;hi+=HEAT_PER){
+            const hchunk=deptStats.slice(hi,hi+HEAT_PER);
+            const hpg=Math.floor(hi/HEAT_PER)+1;
+            const htotal=Math.ceil(deptStats.length/HEAT_PER);
+            const htitle=htotal>1?`課程主題偏好（${hpg}/${htotal}）`:'課程主題偏好';
+            const heatContent=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px;overflow-x:auto">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">各部門課程主題偏好</div>
+              <div style="font-size:11px;color:var(--faint);margin-bottom:12px">各部門在不同課程主分類的選課紀錄數（色塊越深代表比例越高）</div>
+              ${renderHeatmap(hchunk)}
+            </div>`;
+            sections.push({eyebrow:'部門分析',title:htitle,content:heatContent,insight:null});
+          }
+        }
+      } else {
+        sections.push({eyebrow:'部門分析',title:'部門人均學習指標',content:deptContent.join(''),insight:insights?.dept});
+      }
+    }
+  }
+
+  // Traffic
+  if(modules.traffic&&trafficData&&isOn('f-traffic')){
+    sections.push({eyebrow:'同時在線分析',title:'平台流量使用狀況',content:`
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 12px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px">每日最高同時在線人數</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:14px">現有方案上限：${trafficData.limit} 人同時在線｜達上限標示紅色，差 1 人達上限標示橘色</div>
+        ${trafficSVG(trafficData)}
+      </div>`,insight:insights?.traffic});
+  }
+
+
+
+  return sections;
+}
+
+function insightBlock(text) {
+  if(!text) return '';
+  return `<div class="insight">💡 ${text}</div>`;
+}
+
+function reportHeader(clientName, dateFrom, dateTo, m1, modules) {
+  const parts=['整體使用狀況','課程學習'];
+  if(modules.dept) parts.push('部門分析');
+  if(modules.assign) parts.push('指派課程');
+  if(modules.traffic) parts.push('流量分析');
+  if(modules.customlist) parts.push('自訂課程清單');
+  return `<div class="report-header">
+    <div class="rh-badge">Hahow for Business × ${clientName}</div>
+    <div class="rh-title">學習成效分析報告</div>
+    <div class="rh-sub">${parts.join(' · ')}</div>
+    <div class="rh-meta">
+      <span>統計區間 <b>${dateFrom} – ${dateTo}</b></span>
+      <span>產出日期 <b>${new Date().toLocaleDateString('zh-TW')}</b></span>
+      <span>資料來源 <b>Hahow for Business 平台</b></span>
+    </div>
+  </div>`;
+}
+
+function printBar(clientName, dateFrom, dateTo) {
+  return `<div class="print-bar">
+    <div class="print-bar-left">客戶：<b>${clientName}</b>　區間：<b>${dateFrom} – ${dateTo}</b></div>
+    <div class="print-bar-actions">
+      <button class="btn-outline" onclick="location.reload()">重新設定</button>
+      <button class="btn-primary" onclick="window.print()">🖨 列印 / 儲存 PDF</button>
+    </div>
+  </div>`;
+}
+
+function renderPortrait(d) {
+  const {clientName,dateFrom,dateTo,m1,modules}=d;
+  const sections=buildSections(d);
+  let body='';
+  sections.forEach(s=>{
+    body+=`<div class="rs">
+      <div class="rs-eyebrow">${s.eyebrow}</div>
+      <div class="rs-title">${s.title}</div>
+      ${s.content}
+      ${insightBlock(s.insight)}
+    </div>`;
+  });
+  document.getElementById('mainArea').innerHTML=`
+    <div class="report-wrap">
+      ${printBar(clientName,dateFrom,dateTo)}
+      <div class="report">
+        ${reportHeader(clientName,dateFrom,dateTo,m1,modules)}
+        <div class="report-body">${body}</div>
+        <div class="report-footer">Hahow for Business × ${clientName}｜本報告依平台匯出原始數據計算，數據截止 ${dateTo}</div>
+      </div>
+    </div>`;
+}
+
+function renderSlides(d) {
+  const {clientName,dateFrom,dateTo,m1,modules}=d;
+  const sections=buildSections(d);
+  const headerSlide=`<div class="slide slide-cover">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px">
+      <div class="cover-logo">Hahow for Business</div>
+      <div class="cover-client">${clientName}</div>
+      <div class="cover-report">學習成效分析報告</div>
+      <div class="cover-meta">
+        <span>統計區間 <b>${dateFrom} – ${dateTo}</b></span>
+        <span>產出日期 <b>${new Date().toLocaleDateString('zh-TW')}</b></span>
+      </div>
+    </div>
+  </div>`;
+  let slides=headerSlide;
+  sections.forEach(s=>{
+    slides+=`<div class="slide">
+      <div class="slide-header">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--teal-m)">${s.eyebrow}</div>
+          <div class="slide-title">${s.title}</div>
+        </div>
+        <div class="slide-meta">${clientName}　${dateFrom} – ${dateTo}</div>
+      </div>
+      <div class="slide-body">
+        ${s.content}
+        ${insightBlock(s.insight)}
+      </div>
+    </div>`;
+  });
+  document.getElementById('mainArea').innerHTML=`
+    <div class="report-wrap">
+      ${printBar(clientName,dateFrom,dateTo)}
+      <div class="slides-wrap">${slides}</div>
+    </div>`;
+}
+
+
+async function generateReport() {
+  if(!files.learners||!files.courses){alert('請先上傳學員學習記錄和學員課程紀錄');return;}
+  if(modules.assign&&!files.assign){alert('已勾選指派課程分析，請上傳指派課程報表');return;}
+  if(modules.traffic&&!files.traffic_line){alert('已勾選流量使用分析，請上傳折線圖原始數據');return;}
+  if(modules.yoy&&(!files.learners2||!files.courses2)){alert('已勾選年度對比，請上傳第二年度必備檔案');return;}
+  if(modules.customlist&&!files.customlist){alert('已勾選自選課程清單分析，請上傳課程清單');return;}
+
+  updateFields();
+  const clientName=document.getElementById('clientName').value||'（客戶名稱）';
+  const context=document.getElementById('contextNote').value;
+  const dateFrom=document.getElementById('dateFrom').value||'—';
+  const dateTo=document.getElementById('dateTo').value||'—';
+  const trafficLimit=parseInt(document.getElementById('trafficLimit')?.value||'10')||10;
+  const y1label=document.getElementById('y1label')?.value||'第一年度';
+  const y2label=document.getElementById('y2label')?.value||'第二年度';
+  const apiKey='';
+
+
+  showLoading('讀取檔案中…');
+  try {
+    setStep('解析學員學習記錄…');
+    const learnersRaw=await parseXLSX(files.learners);
+    setStep('解析課程紀錄…');
+    const coursesRaw=await parseXLSX(files.courses);
+    let learnersRaw2=null,coursesRaw2=null;
+    if(modules.yoy&&files.learners2&&files.courses2){
+      setStep('解析第二年度資料…');
+      learnersRaw2=await parseXLSX(files.learners2);
+      coursesRaw2=await parseXLSX(files.courses2);
+    }
+    let assignRaw=[],trafficLine=[],customListRaw=[];
+    if(modules.assign&&files.assign){setStep('解析指派課程報表…');assignRaw=await parseXLSX(files.assign);}
+    if(modules.traffic&&files.traffic_line){setStep('解析在線人數數據…');trafficLine=await parseCSV(files.traffic_line);}
+    if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseXLSX(files.customlist);}
+
+    setStep('計算指標…');
+    const m1=computeMetrics(learnersRaw,coursesRaw);
+    const m2=learnersRaw2&&coursesRaw2?computeMetrics(learnersRaw2,coursesRaw2):null;
+    const deptLevel=modules.dept?Math.max(1,parseInt(document.getElementById('deptLevel')?.value||'1')||1):1;
+    // Merge both years for dept stats so zeroCount covers all accounts
+    // For all analyses except KPI/trend: use Y2 when YoY is on
+    const primaryCourses = (modules.yoy && coursesRaw2) ? coursesRaw2 : coursesRaw;
+    const primaryLearners = (modules.yoy && learnersRaw2) ? learnersRaw2 : learnersRaw;
+
+    const deptStats=modules.dept?getDeptStats(primaryLearners,primaryCourses,deptLevel):[];
+    const assignBatches=modules.assign?processAssign(assignRaw):[];
+    const assignedNames=modules.assign?getAssignedNames(assignRaw):new Set();
+    const allCoursesY = (modules.yoy && m2) ? m2.allCourses : m1.allCourses;
+    const topAll=allCoursesY.slice(0,10);
+    const topSelf=allCoursesY.filter(c=>!assignedNames.has(c.name)).slice(0,10);
+    const trafficData=modules.traffic?processTraffic(trafficLine,trafficLimit):null;
+    const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses):null;
+
+    // Compute assign vs self split data for pie charts
+    let assignSplitData=null;
+    if(modules.assign&&assignRaw.length){
+      const assignedSet=getAssignedNames(assignRaw);
+      const assignedCourses=primaryCourses.filter(r=>assignedSet.has(r['課程名稱']));
+      const selfCourses=primaryCourses.filter(r=>!assignedSet.has(r['課程名稱']));
+      const regA=assignedCourses.length, regS=selfCourses.length;
+      const compA=assignedCourses.filter(r=>r['完課狀態']==='已完課').length;
+      const compS=selfCourses.filter(r=>r['完課狀態']==='已完課').length;
+      const hrA=assignedCourses.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60;
+      const hrS=selfCourses.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60;
+      assignSplitData={regA,regS,compA,compS,hrA:hrA.toFixed(1),hrS:hrS.toFixed(1)};
+    }
+
+    const insights=null;
+
+    setStep('產出報告…');
+    const rdata={clientName,dateFrom,dateTo,m1,m2,y1label,y2label,
+      deptStats,assignBatches,topAll,topSelf,trafficData,customListData,assignSplitData,insights,modules};
+    if(viewMode==='slides') renderSlides(rdata);
+    else renderPortrait(rdata);
+  } catch(err) {
+    console.error(err);
+    document.getElementById('mainArea').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">發生錯誤</div><div class="empty-desc">${err.message}</div></div>`;
+  }
+}
+
+function showLoading(msg){document.getElementById('mainArea').innerHTML=`<div class="loading-state"><div class="loading-spinner"></div><div class="loading-msg">${msg}</div><div class="loading-step" id="loadingStep"></div></div>`;}
+function setStep(msg){const el=document.getElementById('loadingStep');if(el)el.textContent=msg;}
+
+async function callClaudeForInsights(){return null;}
+// Init fields
+updateFields();
+</script>
+</body>
+</html>
