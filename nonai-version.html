@@ -227,6 +227,8 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 .insight b{color:var(--teal);}
 
 .report-footer{text-align:center;padding:18px;font-size:11px;color:var(--faint);border-top:1px solid var(--border);}
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(0,150,138,0.15);color:var(--teal);font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:inherit;line-height:1;flex-shrink:0;text-decoration:none;transition:background 0.15s;}
+.info-btn:hover{background:rgba(0,150,138,0.3);}
 
 /* PRINT */
 @media print{
@@ -303,8 +305,14 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
         <label class="file-slot" id="slot-courses">
           <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses')">
           <div class="fst">必填</div>
-          <div class="file-slot-name">學員課程紀錄</div>
+          <div class="file-slot-name">學員課程紀錄（依註冊時間）</div>
           <div class="file-slot-status" id="status-courses">點擊上傳 .xlsx</div>
+        </label>
+        <label class="file-slot" id="slot-courses-watch">
+          <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses_watch')">
+          <div class="fst">必填</div>
+          <div class="file-slot-name">學員課程紀錄（依觀看時間）</div>
+          <div class="file-slot-status" id="status-courses_watch">點擊上傳 .xlsx</div>
         </label>
       </div>
     </div>
@@ -364,9 +372,12 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
         <option value="99">完整名稱</option>
       </select>
     </div>
-    <div class="module-toggle" id="mod-assign" onclick="toggleModule('assign')">
-      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div><div class="toggle-name">指派課程分析</div><div class="toggle-req">需上傳：指派課程報表</div></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="module-toggle" id="mod-assign" onclick="toggleModule('assign')" style="flex:1">
+        <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><div class="toggle-name">指派課程分析</div><div class="toggle-req">需上傳：指派課程報表</div></div>
+      </div>
+      <a href="https://prod-useast-a.online.tableau.com/#/site/hahow/views/_16989041303570/sheet0/0117d84c-6584-43f9-9129-bfafb04e5d7a/_0?:iid=2" target="_blank" class="info-btn" title="前往下載指派課程報表">i</a>
     </div>
     <label class="file-slot" id="slot-assign" style="display:none">
       <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'assign')">
@@ -375,9 +386,12 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
       <div class="file-slot-status" id="status-assign">點擊上傳 .xlsx</div>
     </label>
 
-    <div class="module-toggle" id="mod-traffic" onclick="toggleModule('traffic')">
-      <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div><div class="toggle-name">流量使用分析</div><div class="toggle-req">需上傳：在線人數 CSV</div></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="module-toggle" id="mod-traffic" onclick="toggleModule('traffic')" style="flex:1">
+        <div class="toggle-check"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><div class="toggle-name">流量使用分析</div><div class="toggle-req">需上傳：在線人數 CSV</div></div>
+      </div>
+      <a href="https://lookerstudio.google.com/reporting/b3aeef01-11aa-43c9-8e67-945f3823e5bc" target="_blank" class="info-btn" title="前往下載在線人數折線圖資料">i</a>
     </div>
     <div id="traffic-files" style="display:none;flex-direction:column;gap:7px;">
       <div class="traffic-limit-wrap">
@@ -618,7 +632,7 @@ function toYYYYMM(val) {
   return '';
 }
 
-function computeMetrics(learnersRaw, coursesRaw) {
+function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
   // Activation rate
   const nonRemoved = learnersRaw.filter(r => r['員工使用狀態'] !== '已移除' && r['員工使用狀態'] !== '已停用' && r['員工使用狀態'] !== '停用');
   const activated = learnersRaw.filter(r => r['員工使用狀態'] === '啟用');
@@ -647,8 +661,13 @@ function computeMetrics(learnersRaw, coursesRaw) {
     if(!catMap[cat]) catMap[cat]={total:0,comp:0};
     catMap[cat].total++;
     if(r['完課狀態']==='已完課') catMap[cat].comp++;
+  });
+  // catWatchMap uses 觀看時間報表
+  (coursesWatchRaw||[]).forEach(r => {
+    const cat=r['課程主分類']||'';
+    if(!cat||cat==='--') return;
     if(!catWatchMap[cat]) catWatchMap[cat]=0;
-    catWatchMap[cat]+=(Number(r['觀看時間（分）'])||0);
+    catWatchMap[cat]+=(Number(r['期間觀看時間（分）'])||0);
   });
 
   const courseMap={};
@@ -798,7 +817,7 @@ function getAssignedNames(assignData) {
   return names;
 }
 
-function processCustomList(customListRaw, coursesRaw) {
+function processCustomList(customListRaw, coursesRaw, coursesWatchRaw) {
   // 完全比對課程名稱
   const targetNames = new Set(
     customListRaw.map(r => String(r['課程名稱']||'').trim()).filter(Boolean)
@@ -815,7 +834,12 @@ function processCustomList(customListRaw, coursesRaw) {
     };
     courseMap[name].emails.add(r['員工信箱']);
     if (r['完課狀態']==='已完課') courseMap[name].comp++;
-    courseMap[name].watchMin += (Number(r['觀看時間（分）'])||0);
+  });
+  // watchMin from 觀看時間報表
+  (coursesWatchRaw||[]).forEach(r => {
+    const name = String(r['課程名稱']||'').trim();
+    if (!targetNames.has(name)||!courseMap[name]) return;
+    courseMap[name].watchMin += (Number(r['期間觀看時間（分）'])||0);
   });
 
   const courses = Object.values(courseMap)
@@ -1685,7 +1709,7 @@ function renderSlides(d) {
 
 
 async function generateReport() {
-  if(!files.learners||!files.courses){alert('請先上傳學員學習記錄和學員課程紀錄');return;}
+  if(!files.learners||!files.courses||!files.courses_watch){alert('請先上傳三份必備檔案：學員學習記錄、學員課程紀錄（依註冊時間）、學員課程紀錄（依觀看時間）');return;}
   if(modules.assign&&!files.assign){alert('已勾選指派課程分析，請上傳指派課程報表');return;}
   if(modules.traffic&&!files.traffic_line){alert('已勾選流量使用分析，請上傳折線圖原始數據');return;}
   if(modules.yoy&&(!files.learners2||!files.courses2)){alert('已勾選年度對比，請上傳第二年度必備檔案');return;}
@@ -1706,13 +1730,16 @@ async function generateReport() {
   try {
     setStep('解析學員學習記錄…');
     const learnersRaw=await parseXLSX(files.learners);
-    setStep('解析課程紀錄…');
+    setStep('解析課程紀錄（註冊時間）…');
     const coursesRaw=await parseXLSX(files.courses);
-    let learnersRaw2=null,coursesRaw2=null;
+    setStep('解析課程紀錄（觀看時間）…');
+    const coursesWatchRaw=await parseXLSX(files.courses_watch);
+    let learnersRaw2=null,coursesRaw2=null,coursesWatchRaw2=null;
     if(modules.yoy&&files.learners2&&files.courses2){
       setStep('解析第二年度資料…');
       learnersRaw2=await parseXLSX(files.learners2);
       coursesRaw2=await parseXLSX(files.courses2);
+      coursesWatchRaw2=files.courses_watch2?await parseXLSX(files.courses_watch2):null;
     }
     let assignRaw=[],trafficLine=[],customListRaw=[];
     if(modules.assign&&files.assign){setStep('解析指派課程報表…');assignRaw=await parseXLSX(files.assign);}
@@ -1720,8 +1747,8 @@ async function generateReport() {
     if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseXLSX(files.customlist);}
 
     setStep('計算指標…');
-    const m1=computeMetrics(learnersRaw,coursesRaw);
-    const m2=learnersRaw2&&coursesRaw2?computeMetrics(learnersRaw2,coursesRaw2):null;
+    const m1=computeMetrics(learnersRaw,coursesRaw,coursesWatchRaw);
+    const m2=learnersRaw2&&coursesRaw2?computeMetrics(learnersRaw2,coursesRaw2,coursesWatchRaw2||coursesWatchRaw):null;
     const deptLevel=modules.dept?Math.max(1,parseInt(document.getElementById('deptLevel')?.value||'1')||1):1;
     // Merge both years for dept stats so zeroCount covers all accounts
     // For all analyses except KPI/trend: use Y2 when YoY is on
@@ -1735,7 +1762,8 @@ async function generateReport() {
     const topAll=allCoursesY.slice(0,10);
     const topSelf=allCoursesY.filter(c=>!assignedNames.has(c.name)).slice(0,10);
     const trafficData=modules.traffic?processTraffic(trafficLine,trafficLimit):null;
-    const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses):null;
+    const primaryCoursesWatch=(modules.yoy&&coursesWatchRaw2)?coursesWatchRaw2:coursesWatchRaw;
+    const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses,primaryCoursesWatch):null;
 
     // Compute assign vs self split data for pie charts
     let assignSplitData=null;
@@ -1746,8 +1774,11 @@ async function generateReport() {
       const regA=assignedCourses.length, regS=selfCourses.length;
       const compA=assignedCourses.filter(r=>r['完課狀態']==='已完課').length;
       const compS=selfCourses.filter(r=>r['完課狀態']==='已完課').length;
-      const hrA=assignedCourses.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60;
-      const hrS=selfCourses.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60;
+      // Use 觀看時間報表 for watch time
+      const assignedNames2=new Set(assignedCourses.map(r=>r['課程名稱']));
+      const selfNames2=new Set(selfCourses.map(r=>r['課程名稱']));
+      const hrA=primaryCoursesWatch.filter(r=>assignedNames2.has(r['課程名稱'])).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+      const hrS=primaryCoursesWatch.filter(r=>selfNames2.has(r['課程名稱'])).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
       assignSplitData={regA,regS,compA,compS,hrA:hrA.toFixed(1),hrS:hrS.toFixed(1)};
     }
 
