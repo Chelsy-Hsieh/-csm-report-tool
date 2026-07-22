@@ -253,7 +253,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 <aside class="sidebar">
   <div>
     <div class="sidebar-logo">Hahow for Business</div>
-    <div class="sidebar-title">學習成效報告產生器</div>
+    <div class="sidebar-title">學習成效報告產生器 <span style="font-size:11px;font-weight:400;color:var(--teal);letter-spacing:0.05em">v2</span></div>
     <div class="sidebar-desc">上傳平台匯出檔案，選擇模組與欄位，產出客製化成效報告。</div>
   </div>
 
@@ -582,6 +582,27 @@ async function parseXLSX(file) {
     r.readAsArrayBuffer(file);
   });
 }
+async function parseCustomList(file) {
+  // Read first column (A) of Excel, no header row
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const range = XLSX.utils.decode_range(ws['!ref']||'A1');
+      const names = [];
+      for(let row=range.s.r; row<=range.e.r; row++){
+        const cell = ws[XLSX.utils.encode_cell({r:row,c:0})];
+        if(cell && cell.v && String(cell.v).trim()) {
+          names.push({課程名稱: String(cell.v).trim()});
+        }
+      }
+      resolve(names);
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
 async function parseCSV(file) {
   return new Promise(resolve => {
     const r = new FileReader();
@@ -1744,7 +1765,7 @@ async function generateReport() {
     let assignRaw=[],trafficLine=[],customListRaw=[];
     if(modules.assign&&files.assign){setStep('解析指派課程報表…');assignRaw=await parseXLSX(files.assign);}
     if(modules.traffic&&files.traffic_line){setStep('解析在線人數數據…');trafficLine=await parseCSV(files.traffic_line);}
-    if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseXLSX(files.customlist);}
+    if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseCustomList(files.customlist);}
 
     setStep('計算指標…');
     const m1=computeMetrics(learnersRaw,coursesRaw,coursesWatchRaw);
