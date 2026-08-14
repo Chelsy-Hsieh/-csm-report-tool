@@ -227,6 +227,9 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 .insight b{color:var(--teal);}
 
 .report-footer{text-align:center;padding:18px;font-size:11px;color:var(--faint);border-top:1px solid var(--border);}
+.theme-btn{background:#FFFFFF;border:1.5px solid #C8E3E0;color:var(--muted);border-radius:8px;padding:8px 4px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s;letter-spacing:0.03em;}
+.theme-btn:hover{background:var(--teal-l);color:var(--teal-d);border-color:var(--teal-m);}
+.theme-btn-active{background:var(--teal)!important;border-color:var(--teal)!important;color:#fff!important;font-weight:700;box-shadow:0 2px 8px rgba(0,150,138,0.4);}
 .info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(0,150,138,0.15);color:var(--teal);font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:inherit;line-height:1;flex-shrink:0;text-decoration:none;transition:background 0.15s;}
 .info-btn:hover{background:rgba(0,150,138,0.3);}
 
@@ -241,6 +244,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
   .kpi-card,.card-inner,.insight{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   .report-body{gap:24px;}
   .slide{page-break-after:always;aspect-ratio:16/9!important;}
+  .slide-cover{min-height:100vh!important;aspect-ratio:unset!important;}
   .slides-wrap{gap:0;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
 }
@@ -253,7 +257,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 <aside class="sidebar">
   <div>
     <div class="sidebar-logo">Hahow for Business</div>
-    <div class="sidebar-title">學習成效報告產生器 <span style="font-size:11px;font-weight:400;color:var(--teal);letter-spacing:0.05em">v2</span></div>
+    <div class="sidebar-title">學習成效報告產生器 <span style="font-size:11px;font-weight:400;color:var(--teal);letter-spacing:0.05em">v3</span></div>
     <div class="sidebar-desc">上傳平台匯出檔案，選擇模組與欄位，產出客製化成效報告。</div>
   </div>
 
@@ -264,6 +268,29 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
   <div class="sb-section">
     <div class="sb-label">客戶名稱</div>
     <input class="client-input" id="clientName" type="text" placeholder="例：強茂股份有限公司">
+  </div>
+
+  <!-- THEME -->
+  <div class="sb-section">
+    <div class="sb-label">報告主題</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
+      <button id="theme-dark" class="theme-btn theme-btn-active" onclick="setTheme('dark')">深色</button>
+      <button id="theme-light" class="theme-btn" onclick="setTheme('light')">淺色</button>
+      <button id="theme-brand" class="theme-btn" onclick="setTheme('brand')">品牌色</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">強調色</div>
+    <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:5px 8px;margin-bottom:7px">
+      <input type="color" id="accentColor" value="#00968A" style="width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0">
+      <input class="client-input" id="accentColorHex" type="text" value="#00968A" placeholder="#00968A" style="border:none;padding:0;font-size:11px;font-family:monospace;width:70px" oninput="syncColor('accent',this.value)">
+    </div>
+    <div id="brand-color-row" style="display:none">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">品牌色（封面＆頁首背景）</div>
+      <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid #C8E3E0;border-radius:var(--r-sm);padding:5px 8px">
+        <input type="color" id="brandColor" value="#1C1A17" style="width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0">
+        <input class="client-input" id="brandColorHex" type="text" value="#1C1A17" placeholder="#1C1A17" style="border:none;padding:0;font-size:11px;font-family:monospace;width:70px" oninput="syncColor('brand',this.value)">
+      </div>
+    </div>
+    <div id="colorWarning" style="display:none;font-size:10px;color:var(--amber);margin-top:6px">⚠ 強調色過淺可能影響可讀性</div>
   </div>
 
   <!-- DATE -->
@@ -298,19 +325,19 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
       <div style="display:flex;flex-direction:column;gap:7px">
         <label class="file-slot" id="slot-learners">
           <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'learners')">
-          <div class="fst">必填</div>
+          <div class="fst opt">建議</div>
           <div class="file-slot-name">學員學習記錄</div>
           <div class="file-slot-status" id="status-learners">點擊上傳 .xlsx</div>
         </label>
         <label class="file-slot" id="slot-courses">
           <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses')">
-          <div class="fst">必填</div>
+          <div class="fst opt">建議</div>
           <div class="file-slot-name">學員課程紀錄（依註冊時間）</div>
           <div class="file-slot-status" id="status-courses">點擊上傳 .xlsx</div>
         </label>
         <label class="file-slot" id="slot-courses-watch">
           <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses_watch')">
-          <div class="fst">必填</div>
+          <div class="fst opt">建議</div>
           <div class="file-slot-name">學員課程紀錄（依觀看時間）</div>
           <div class="file-slot-status" id="status-courses_watch">點擊上傳 .xlsx</div>
         </label>
@@ -468,6 +495,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
       <div class="field-group-title">部門分析</div>
       <div class="field-checks">
         <label class="field-check"><input type="checkbox" id="f-deptbars" checked onchange="updateFields()"><span class="field-check-label">人均學習指標</span></label>
+        <label class="field-check sub"><input type="checkbox" id="f-deptoutlier" checked onchange="updateFields()"><span class="field-check-label">標示特別活躍學員</span></label>
         <label class="field-check"><input type="checkbox" id="f-deptheat" checked onchange="updateFields()"><span class="field-check-label">課程主題偏好熱力圖</span></label>
       </div>
     </div>
@@ -562,9 +590,113 @@ function toggleModule(mod) {
   }
 }
 
+let currentTheme = 'dark';
+
+function setTheme(theme) {
+  currentTheme = theme;
+  ['dark','light','brand'].forEach(t => {
+    document.getElementById(`theme-${t}`).classList.toggle('theme-btn-active', t===theme);
+  });
+  document.getElementById('brand-color-row').style.display = theme==='brand' ? 'block' : 'none';
+}
+
+function hexToRgb(h) {
+  return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+}
+function luma(h) {
+  if(!/^#[0-9A-Fa-f]{6}$/.test(h)) return 0.5;
+  const [r,g,b]=hexToRgb(h).map(v=>v/255);
+  return 0.2126*r+0.7152*g+0.0722*b;
+}
+function blend(hex, t) {
+  const [r,g,b]=hexToRgb(hex);
+  return `#${[r,g,b].map(v=>Math.round(v+(255-v)*t).toString(16).padStart(2,'0')).join('')}`;
+}
+function darken(hex, t) {
+  const [r,g,b]=hexToRgb(hex);
+  return `#${[r,g,b].map(v=>Math.round(v*t).toString(16).padStart(2,'0')).join('')}`;
+}
+function contrastColor(bg) {
+  return luma(bg) > 0.45 ? '#1C1A17' : '#FFFFFF';
+}
+
+function syncColor(type, hex) {
+  const isValid = /^#[0-9A-Fa-f]{6}$/.test(hex);
+  if(type==='brand' && isValid) document.getElementById('brandColor').value = hex;
+  if(type==='accent' && isValid) document.getElementById('accentColor').value = hex;
+  const accent = document.getElementById('accentColorHex').value;
+  document.getElementById('colorWarning').style.display = luma(accent)>0.65 ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('brandColor').addEventListener('input', e => {
+    document.getElementById('brandColorHex').value = e.target.value;
+    syncColor('brand', e.target.value);
+  });
+  document.getElementById('accentColor').addEventListener('input', e => {
+    document.getElementById('accentColorHex').value = e.target.value;
+    syncColor('accent', e.target.value);
+  });
+});
+
+function getColorVars() {
+  const accent = document.getElementById('accentColorHex').value.trim();
+  const brandRaw = document.getElementById('brandColorHex')?.value.trim() || '#1C1A17';
+  const validHex = h => /^#[0-9A-Fa-f]{6}$/.test(h);
+  const a = validHex(accent) ? accent : '#00968A';
+  const b = validHex(brandRaw) ? brandRaw : '#1C1A17';
+
+  // Accent variants
+  const aVars = [
+    `--teal:${a}`,
+    `--teal-d:${darken(a,0.8)}`,
+    `--teal-m:${blend(a,0.25)}`,
+    `--teal-l:${blend(a,0.88)}`,
+  ];
+
+  if(currentTheme === 'dark') {
+    // Dark: ink stays #1C1A17, accent changes
+    return `:root{${aVars.join(';')}}`;
+  }
+
+  if(currentTheme === 'light') {
+    // Light: white background, ink becomes near-black, header uses accent bg
+    const headerBg = a;
+    const headerText = contrastColor(headerBg);
+    return `:root{${aVars.join(';')};--ink:#1C1A17;--bg:#FAFAF8;--border:#E0DDD8;--faint:#999;--card:#FFFFFF}
+.report-header,.slide-header{background:${headerBg}!important;color:${headerText}!important;}
+.slide-cover{background:${headerBg}!important;color:${headerText}!important;}
+.slide-cover .rh-badge,.slide-cover .rh-sub,.slide-cover .rh-meta{color:${contrastColor(headerBg)==='#FFFFFF'?'rgba(255,255,255,0.65)':'rgba(0,0,0,0.55)'}!important;}
+.slide-header .sh-eyebrow{color:${contrastColor(headerBg)==='#FFFFFF'?'rgba(255,255,255,0.65)':'rgba(0,0,0,0.55)'}!important;}
+.slide-header .sh-client{color:${headerText}!important;}
+.rh-title,.slide-cover .rh-title{color:${headerText}!important;}
+.print-bar{background:#f0eeea;}`;
+  }
+
+  if(currentTheme === 'brand') {
+    // Brand: dark bg = brand color deep version, accent for charts
+    const brandBg = darken(b, 0.6);
+    const headerText = contrastColor(b);
+    return `:root{${aVars.join(';')};--ink:${brandBg}}
+.report-header,.slide-header{background:${b}!important;color:${headerText}!important;}
+.slide-cover{background:${b}!important;color:${headerText}!important;}
+.slide-cover .rh-badge,.slide-cover .rh-sub,.slide-cover .rh-meta{color:${contrastColor(b)==='#FFFFFF'?'rgba(255,255,255,0.65)':'rgba(0,0,0,0.55)'}!important;}
+.slide-header .sh-eyebrow{color:${contrastColor(b)==='#FFFFFF'?'rgba(255,255,255,0.65)':'rgba(0,0,0,0.55)'}!important;}
+.slide-header .sh-client{color:${headerText}!important;}
+.rh-title,.slide-cover .rh-title{color:${headerText}!important;}`;
+  }
+  return '';
+}
+
+function injectColorVars(htmlContent) {
+  const cssVars = getColorVars();
+  if(!cssVars) return htmlContent;
+  return htmlContent.replace('</style>', cssVars + '</style>');
+}
+
 function updateFields() {
   const ids = ['f-unique','f-activation','f-totalreg','f-totalcomp','f-comprate','f-totalhr','f-avgreg','f-avgcomp','f-avghr',
-    'f-activation-trend','f-trend','f-cattable','f-catpie','f-top10all','f-top10self','f-deptbars','f-deptheat','f-assign','f-assignpie','f-traffic','f-customlist'];
+    'f-activation-trend','f-trend','f-cattable','f-catpie','f-top10all','f-top10self','f-deptbars','f-deptoutlier','f-deptheat','f-assign','f-assignpie','f-traffic','f-customlist'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if(el) fields[id] = el.checked;
@@ -660,8 +792,9 @@ function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
   const activated = learnersRaw.filter(r => r['員工使用狀態'] === '啟用');
   const activationRate = nonRemoved.length ? (activated.length / nonRemoved.length * 100).toFixed(1) : '0';
 
-  // Totals from learner records
-  const totalReg = learnersRaw.reduce((s,r)=>s+(Number(r['註冊課程數量'])||0),0);
+  // 冊課總數：課程紀錄（依註冊時間）筆數
+  const totalReg = (coursesRaw||[]).length;
+  // 完課總數：學員學習記錄加總（維持不變）
   const totalComp = learnersRaw.reduce((s,r)=>s+(Number(r['完成課程數量'])||0),0);
   const overallCompRate = (totalComp/Math.max(totalReg,1)*100).toFixed(1);
 
@@ -708,8 +841,8 @@ function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
   const avgRegPerLearner=(totalReg/Math.max(uniqueLearners,1)).toFixed(1);
   const avgCompPerLearner=(totalComp/Math.max(uniqueLearners,1)).toFixed(1);
 
-  // 學習總時數：所有人觀看時間加總（小時）
-  const totalHr = (learnersRaw.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0)/60).toFixed(1);
+  // 學習總時數：課程紀錄（依觀看時間）期間觀看時間加總
+  const totalHr = ((coursesWatchRaw||[]).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60).toFixed(1);
 
   const monthlyActivation={};
   learnersRaw.forEach(r => {
@@ -840,7 +973,7 @@ function processAssign(data) {
 function getAssignedNames(assignData) {
   const names=new Set(); let last='';
   assignData.forEach(r=>{
-    if(r['指派課程']) last=r['指派課程'];
+    if(r['指派課程']) last=String(r['指派課程']).trim();
     if(r['Email']&&last) names.add(last);
   });
   return names;
@@ -1033,8 +1166,12 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
       svg+=`<text x="${x}" y="${yPos(rv)-4}" text-anchor="middle" font-size="8" font-weight="600" fill="#00968A">${rv}</text>`;
       if(i===0) lp1=`M${x},${yPos(cv)}`; else lp1+=` L${x},${yPos(cv)}`;
       svg+=`<text x="${x}" y="${yPos(cv)-7}" text-anchor="middle" font-size="8" font-weight="600" fill="#D97706">${cv}</text>`;
-      const lbl=m.length>=7?m.slice(0,4)+'/'+m.slice(5,7):m;
-      svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
+      // Quarterly labels when > 12 months
+      const showLbl=n<=12||['01','04','07','10'].includes(m.slice(5,7));
+      if(showLbl){
+        const lbl=m.length>=7?m.slice(0,4)+'/'+m.slice(5,7):m;
+        svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
+      }
     }
   });
   // Y1 line: deep teal; Y2 line: deep amber
@@ -1376,7 +1513,8 @@ function renderDeptBars(deptStats) {
     const zeroPill=d.zeroCount>0
       ?`<span class="pill pill-r" style="font-size:10px">${d.zeroCount} 人未學習</span>`
       :`<span class="pill pill-g" style="font-size:10px">全員有學習</span>`;
-    const outlierRow=(d.outliers&&d.outliers.length)
+    const showOutlier=isOn('f-deptoutlier');
+    const outlierRow=(showOutlier&&d.outliers&&d.outliers.length)
       ? `<tr><td colspan="5" style="padding:3px 9px 8px 9px">
           ${d.outliers.map(o=>`<div style="font-size:10px;color:var(--amber);background:var(--amber-l);border-radius:4px;padding:3px 8px;display:inline-block;margin:2px 2px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact">⚠ ${o.name} 為特別活躍之學員，單人學習時數達 ${o.hr.toFixed(1)} hr</div>`).join('')}
         </td></tr>`
@@ -1458,11 +1596,11 @@ function buildSections(d) {
   const sections=[];
 
   // KPIs
-  const kpiHtml=renderKPIs(m1,m2,y1label,y2label);
+  const kpiHtml=m1?renderKPIs(m1,m2,y1label,y2label):null;
   if(kpiHtml) sections.push({eyebrow:'整體指標',title:'平台使用概況',content:kpiHtml,insight:insights?.overview});
 
   // Activation trend
-  if(isOn('f-activation-trend')){
+  if(isOn('f-activation-trend')&&m1?.monthlyActivation){
     const actSvg=activationChartSVG(m1.monthlyActivation,dateFrom,dateTo);
     sections.push({eyebrow:'帳號成長',title:'每月帳號開通數',content:`
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 12px">
@@ -1473,7 +1611,7 @@ function buildSections(d) {
   }
 
   // Trend
-  if(isOn('f-trend')) {
+  if(isOn('f-trend')&&m1?.monthlyReg) {
     const svg=monthlyChartSVG(m1.monthlyReg,m1.monthlyComp,m2?.monthlyReg,m2?.monthlyComp);
     sections.push({eyebrow:'趨勢分析',title:'每月學習趨勢',content:`
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 12px">
@@ -1484,7 +1622,7 @@ function buildSections(d) {
   }
 
   // Category
-  if(isOn('f-cattable')||isOn('f-catpie')) {
+  if((isOn('f-cattable')||isOn('f-catpie'))&&mPrimary?.catMap) {
     if(viewMode==='slides' && isOn('f-cattable')) {
       // Split Hahow / Enterprise into separate slides
       sections.push({eyebrow:'課程學習',title:'各分類完課表現 — Hahow 官方課程',content:`
@@ -1626,7 +1764,7 @@ function buildSections(d) {
     const deptContent=[];
     if(isOn('f-deptbars')){
       deptContent.push(`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
-        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:12px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0 · 特別活躍 = 單人時數 > 部門均值 3 倍且 > 全公司均值 + 1.5 SD</div>
         <table class="dept-tbl">
           <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
           <tbody>${renderDeptBars(deptStats)}</tbody>
@@ -1649,7 +1787,7 @@ function buildSections(d) {
           const pg=Math.floor(i/DEPT_PER_SLIDE)+1;
           const total=Math.ceil(deptStats.length/DEPT_PER_SLIDE);
           const chunkContent=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px">
-            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0</div>
+            <div style="font-size:10px;color:var(--faint);margin-bottom:10px">n ≥ 2 部門 · 依人均學習時數排序 · 未學習 = 註冊課程數為 0 · 特別活躍 = 單人時數 > 部門均值 3 倍且 > 全公司均值 + 1.5 SD</div>
             <table class="dept-tbl">
               <thead><tr><th style="width:130px">部門</th><th>人均學習指標</th><th style="width:55px;text-align:right">啟用率</th><th style="width:90px">啟用狀態</th><th style="width:90px">未學習</th></tr></thead>
               <tbody>${renderDeptBars(chunk)}</tbody>
@@ -1789,7 +1927,7 @@ function renderSlides(d) {
 
 
 async function generateReport() {
-  if(!files.learners||!files.courses||!files.courses_watch){alert('請先上傳三份必備檔案：學員學習記錄、學員課程紀錄（依註冊時間）、學員課程紀錄（依觀看時間）');return;}
+  // Files are optional - analysis sections adapt to what's available
   if(modules.assign&&!files.assign){alert('已勾選指派課程分析，請上傳指派課程報表');return;}
   if(modules.traffic&&!files.traffic_line){alert('已勾選流量使用分析，請上傳折線圖原始數據');return;}
   if(modules.yoy&&(!files.learners2||!files.courses2)){alert('已勾選年度對比，請上傳第二年度必備檔案');return;}
@@ -1809,11 +1947,11 @@ async function generateReport() {
   showLoading('讀取檔案中…');
   try {
     setStep('解析學員學習記錄…');
-    const learnersRaw=await parseXLSX(files.learners);
+    const learnersRaw=files.learners?await parseXLSX(files.learners):null;
     setStep('解析課程紀錄（註冊時間）…');
-    const coursesRaw=await parseXLSX(files.courses);
+    const coursesRaw=files.courses?await parseXLSX(files.courses):null;
     setStep('解析課程紀錄（觀看時間）…');
-    const coursesWatchRaw=await parseXLSX(files.courses_watch);
+    const coursesWatchRaw=files.courses_watch?await parseXLSX(files.courses_watch):null;
     let learnersRaw2=null,coursesRaw2=null,coursesWatchRaw2=null;
     if(modules.yoy&&files.learners2&&files.courses2){
       setStep('解析第二年度資料…');
@@ -1827,20 +1965,20 @@ async function generateReport() {
     if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseCustomList(files.customlist);}
 
     setStep('計算指標…');
-    const m1=computeMetrics(learnersRaw,coursesRaw,coursesWatchRaw);
-    const m2=learnersRaw2&&coursesRaw2?computeMetrics(learnersRaw2,coursesRaw2,coursesWatchRaw2||coursesWatchRaw):null;
+    const m1=(learnersRaw||coursesRaw)?computeMetrics(learnersRaw||[],coursesRaw||[],coursesWatchRaw||[]):null;
+    const m2=(learnersRaw2||coursesRaw2)?computeMetrics(learnersRaw2||[],coursesRaw2||[],coursesWatchRaw2||coursesWatchRaw||[]):null;
     const deptLevel=modules.dept?Math.max(1,parseInt(document.getElementById('deptLevel')?.value||'1')||1):1;
     // Merge both years for dept stats so zeroCount covers all accounts
     // For all analyses except KPI/trend: use Y2 when YoY is on
     const primaryCourses = (modules.yoy && coursesRaw2) ? coursesRaw2 : coursesRaw;
     const primaryLearners = (modules.yoy && learnersRaw2) ? learnersRaw2 : learnersRaw;
 
-    const deptStats=modules.dept?getDeptStats(primaryLearners,primaryCourses,deptLevel):[];
+    const deptStats=(modules.dept&&(primaryLearners||primaryCourses))?getDeptStats(primaryLearners||[],primaryCourses||[],deptLevel):[];
     const assignBatches=modules.assign?processAssign(assignRaw):[];
     const assignedNames=modules.assign?getAssignedNames(assignRaw):new Set();
-    const allCoursesY = (modules.yoy && m2) ? m2.allCourses : m1.allCourses;
+    const allCoursesY = ((modules.yoy && m2) ? m2 : m1)?.allCourses || [];
     const topAll=allCoursesY.slice(0,10);
-    const topSelf=allCoursesY.filter(c=>!assignedNames.has(c.name)).slice(0,10);
+    const topSelf=allCoursesY.filter(c=>!assignedNames.has(String(c.name||'').trim())).slice(0,10);
     const trafficData=modules.traffic?processTraffic(trafficLine,trafficLimit):null;
     const primaryCoursesWatch=(modules.yoy&&coursesWatchRaw2)?coursesWatchRaw2:coursesWatchRaw;
     const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses,primaryCoursesWatch):null;
@@ -1849,16 +1987,15 @@ async function generateReport() {
     let assignSplitData=null;
     if(modules.assign&&assignRaw.length){
       const assignedSet=getAssignedNames(assignRaw);
-      const assignedCourses=primaryCourses.filter(r=>assignedSet.has(r['課程名稱']));
-      const selfCourses=primaryCourses.filter(r=>!assignedSet.has(r['課程名稱']));
+      const assignedCourses=primaryCourses.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim()));
+      const selfCourses=primaryCourses.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim()));
       const regA=assignedCourses.length, regS=selfCourses.length;
       const compA=assignedCourses.filter(r=>r['完課狀態']==='已完課').length;
       const compS=selfCourses.filter(r=>r['完課狀態']==='已完課').length;
       // Use 觀看時間報表 for watch time
-      const assignedNames2=new Set(assignedCourses.map(r=>r['課程名稱']));
-      const selfNames2=new Set(selfCourses.map(r=>r['課程名稱']));
-      const hrA=primaryCoursesWatch.filter(r=>assignedNames2.has(r['課程名稱'])).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
-      const hrS=primaryCoursesWatch.filter(r=>selfNames2.has(r['課程名稱'])).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+      // Use assignedSet directly to classify watch time records
+      const hrA=primaryCoursesWatch.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+      const hrS=primaryCoursesWatch.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
       assignSplitData={regA,regS,compA,compS,hrA:hrA.toFixed(1),hrS:hrS.toFixed(1)};
     }
 
@@ -1869,6 +2006,16 @@ async function generateReport() {
       deptStats,assignBatches,topAll,topSelf,trafficData,customListData,assignSplitData,insights,modules};
     if(viewMode==='slides') renderSlides(rdata);
     else renderPortrait(rdata);
+    // Inject theme colors into rendered report
+    const colorCSS=getColorVars();
+    // Remove any previous theme style
+    document.querySelectorAll('style[data-theme]').forEach(s=>s.remove());
+    if(colorCSS){
+      const style=document.createElement('style');
+      style.setAttribute('data-theme','1');
+      style.textContent=colorCSS;
+      document.head.appendChild(style);
+    }
   } catch(err) {
     console.error(err);
     document.getElementById('mainArea').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">發生錯誤</div><div class="empty-desc">${err.message}</div></div>`;
