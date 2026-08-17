@@ -357,8 +357,14 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
           <label class="file-slot" id="slot-courses">
             <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses')">
             <div class="fst">年度一</div>
-            <div class="file-slot-name">學員課程紀錄</div>
+            <div class="file-slot-name">學員課程紀錄（依註冊時間）</div>
             <div class="file-slot-status" id="status-courses">點擊上傳 .xlsx</div>
+          </label>
+          <label class="file-slot" id="slot-courses-watch">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses_watch')">
+            <div class="fst opt">年度一</div>
+            <div class="file-slot-name">學員課程紀錄（依觀看時間）</div>
+            <div class="file-slot-status" id="status-courses_watch">點擊上傳 .xlsx</div>
           </label>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
@@ -372,8 +378,14 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
           <label class="file-slot" id="slot-courses2">
             <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses2')">
             <div class="fst opt">年度二</div>
-            <div class="file-slot-name">學員課程紀錄</div>
+            <div class="file-slot-name">學員課程紀錄（依註冊時間）</div>
             <div class="file-slot-status" id="status-courses2">點擊上傳 .xlsx</div>
+          </label>
+          <label class="file-slot" id="slot-courses-watch2">
+            <input type="file" accept=".xlsx,.xls" onchange="handleFile(this,'courses_watch2')">
+            <div class="fst opt">年度二</div>
+            <div class="file-slot-name">學員課程紀錄（依觀看時間）</div>
+            <div class="file-slot-status" id="status-courses_watch2">點擊上傳 .xlsx</div>
           </label>
         </div>
       </div>
