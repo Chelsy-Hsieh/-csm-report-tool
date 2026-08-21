@@ -1119,9 +1119,11 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
   }
   const allVals=[...regVals,...compVals,...(regVals2||[]),...(compVals2||[])];
   const maxM=Math.max(...allVals,1);
-  const W=700,H=220,pl=44,pr=20,pt=42,pb=34;
-  const cW=W-pl-pr,cH=H-pt-pb,n=months.length;
+  const n=months.length;
   if(n===0) return '';
+  const showTwoRow=!yoy&&n>12; // >12 months: two-row x-axis (month number + year bracket)
+  const W=700,H=showTwoRow?234:220,pl=44,pr=20,pt=42,pb=showTwoRow?48:34;
+  const cW=W-pl-pr,cH=H-pt-pb;
   const barW=Math.min(28,cW/n*(monthlyReg2?0.22:0.45));
   const xPos=i=>pl+(i+0.5)*(cW/n);
   const yPos=v=>pt+cH-(v/maxM*cH);
@@ -1178,14 +1180,35 @@ function monthlyChartSVG(monthlyReg, monthlyComp, monthlyReg2, monthlyComp2) {
       svg+=`<text x="${x}" y="${yPos(rv)-4}" text-anchor="middle" font-size="8" font-weight="600" fill="#00968A">${rv}</text>`;
       if(i===0) lp1=`M${x},${yPos(cv)}`; else lp1+=` L${x},${yPos(cv)}`;
       svg+=`<text x="${x}" y="${yPos(cv)-7}" text-anchor="middle" font-size="8" font-weight="600" fill="#D97706">${cv}</text>`;
-      // Quarterly labels when > 12 months
-      const showLbl=n<=12||['01','04','07','10'].includes(m.slice(5,7));
-      if(showLbl){
+      if(showTwoRow){
+        // Row 1: month number only, every month shown
+        const mm=parseInt(m.slice(5,7),10);
+        svg+=`<text x="${x}" y="${H-pb+13}" text-anchor="middle" font-size="8" fill="#7A756E">${mm}</text>`;
+      } else {
         const lbl=m.length>=7?m.slice(0,4)+'/'+m.slice(5,7):m;
         svg+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#7A756E">${lbl}</text>`;
       }
     }
   });
+  if(showTwoRow){
+    // Row 2: bracket + year label, one per consecutive same-year run of months
+    const groups=[];
+    months.forEach((m,i)=>{
+      const yr=m.slice(0,4);
+      if(groups.length&&groups[groups.length-1].yr===yr) groups[groups.length-1].end=i;
+      else groups.push({yr,start:i,end:i});
+    });
+    const barHalf=(cW/n)/2;
+    const lineY=H-pb+22;
+    const yearY=H-8;
+    groups.forEach(g=>{
+      const lx1=xPos(g.start)-barHalf+2, lx2=xPos(g.end)+barHalf-2;
+      svg+=`<line x1="${lx1}" y1="${lineY}" x2="${lx2}" y2="${lineY}" stroke="#C8C2B8" stroke-width="1"/>`;
+      svg+=`<line x1="${lx1}" y1="${lineY-3}" x2="${lx1}" y2="${lineY+3}" stroke="#C8C2B8" stroke-width="1"/>`;
+      svg+=`<line x1="${lx2}" y1="${lineY-3}" x2="${lx2}" y2="${lineY+3}" stroke="#C8C2B8" stroke-width="1"/>`;
+      svg+=`<text x="${(lx1+lx2)/2}" y="${yearY}" text-anchor="middle" font-size="9" font-weight="600" fill="#5A554E">${g.yr}</text>`;
+    });
+  }
   // Y1 line: deep teal; Y2 line: deep amber
   svg+=`<path d="${lp1}" fill="none" stroke="#007A70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
   months.forEach((m,i)=>{
