@@ -552,6 +552,7 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 
 const files = {};
@@ -717,44 +718,57 @@ function updateFields() {
 
 function isOn(id) { return fields[id] !== false; }
 
-async function parseXLSX(file) {
-  return new Promise(resolve => {
+// 讀取 Excel：部分平台匯出的 xlsx 使用 ZIP64 標頭，SheetJS 0.18.5 無法直接讀取
+// （會報 Array buffer allocation failed），失敗時改用 JSZip 重新打包後再解析
+async function readWorkbookFromFile(file) {
+  const buf = await new Promise((resolve, reject) => {
     const r = new FileReader();
-    r.onload = e => {
-      const wb = XLSX.read(e.target.result,{type:'array',cellDates:true});
-      resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
-    };
+    r.onload = e => resolve(e.target.result);
+    r.onerror = () => reject(new Error('無法讀取檔案「'+file.name+'」'));
     r.readAsArrayBuffer(file);
   });
+  try {
+    return XLSX.read(buf, {type:'array', cellDates:true});
+  } catch(e1) {
+    if (typeof JSZip === 'undefined') throw new Error('檔案「'+file.name+'」解析失敗：'+e1.message);
+    try {
+      const zip = await JSZip.loadAsync(buf);
+      const repacked = await zip.generateAsync({type:'arraybuffer', compression:'DEFLATE'});
+      return XLSX.read(repacked, {type:'array', cellDates:true});
+    } catch(e2) {
+      throw new Error('檔案「'+file.name+'」解析失敗：'+e2.message);
+    }
+  }
+}
+async function parseXLSX(file) {
+  const wb = await readWorkbookFromFile(file);
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
 }
 async function parseCustomList(file) {
   // Read first column (A) of Excel, no header row
-  return new Promise(resolve => {
-    const r = new FileReader();
-    r.onload = e => {
-      const wb = XLSX.read(e.target.result,{type:'array',cellDates:true});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const range = XLSX.utils.decode_range(ws['!ref']||'A1');
-      const names = [];
-      for(let row=range.s.r; row<=range.e.r; row++){
-        const cell = ws[XLSX.utils.encode_cell({r:row,c:0})];
-        if(cell && cell.v && String(cell.v).trim()) {
-          names.push({課程名稱: String(cell.v).trim()});
-        }
-      }
-      resolve(names);
-    };
-    r.readAsArrayBuffer(file);
-  });
+  const wb = await readWorkbookFromFile(file);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const range = XLSX.utils.decode_range(ws['!ref']||'A1');
+  const names = [];
+  for(let row=range.s.r; row<=range.e.r; row++){
+    const cell = ws[XLSX.utils.encode_cell({r:row,c:0})];
+    if(cell && cell.v && String(cell.v).trim()) {
+      names.push({課程名稱: String(cell.v).trim()});
+    }
+  }
+  return names;
 }
 
 async function parseCSV(file) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = e => {
-      const wb = XLSX.read(e.target.result,{type:'string'});
-      resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+      try {
+        const wb = XLSX.read(e.target.result,{type:'string'});
+        resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+      } catch(err) { reject(new Error('檔案「'+file.name+'」解析失敗：'+err.message)); }
     };
+    r.onerror = () => reject(new Error('無法讀取檔案「'+file.name+'」'));
     r.readAsText(file);
   });
 }
