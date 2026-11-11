@@ -257,12 +257,12 @@ body{font-family:'DM Sans','Noto Sans TC',sans-serif;background:var(--bg);color:
 <aside class="sidebar">
   <div>
     <div class="sidebar-logo">Hahow for Business</div>
-    <div class="sidebar-title">學習成效報告產生器 <span style="font-size:11px;font-weight:400;color:var(--teal);letter-spacing:0.05em">v3</span></div>
+    <div class="sidebar-title">學習成效報告產生器 <span style="font-size:11px;font-weight:400;color:var(--teal);letter-spacing:0.05em">v3.1</span></div>
     <div class="sidebar-desc">上傳平台匯出檔案，選擇模組與欄位，產出客製化成效報告。</div>
   </div>
 
   <!-- API KEY (v2 only) -->
-  
+
 
   <!-- CLIENT -->
   <div class="sb-section">
@@ -744,6 +744,41 @@ async function parseXLSX(file) {
   const wb = await readWorkbookFromFile(file);
   return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
 }
+// 必要欄位檢查：上傳錯檔、放錯欄位或壞檔時給明確提示，而不是默默產出空白報告
+const REPORT_TYPES = {
+  learners:      {label:'學員學習記錄',               cols:['員工信箱','員工使用狀態','註冊課程數量']},
+  courses:       {label:'學員課程紀錄（依註冊時間）', cols:['員工信箱','課程名稱','完課狀態']},
+  courses_watch: {label:'學員課程紀錄（依觀看時間）', cols:['課程名稱','期間觀看時間（分）']},
+  assign:        {label:'指派課程報表',               cols:['指派課程','Email']},
+  traffic_line:  {label:'在線人數 CSV',               cols:['local_datetime_axis','上線人數']},
+};
+function normHeader(h) { return String(h==null?'':h).replace(/^﻿/,'').trim(); }
+function assertColumns(headers, file, type, suffix='') {
+  const def = REPORT_TYPES[type];
+  const have = new Set((headers||[]).map(normHeader));
+  const missing = def.cols.filter(c => !have.has(c));
+  if (missing.length) {
+    throw new Error(`檔案「${file.name}」不像是「${def.label}${suffix}」：找不到必要欄位 ${missing.map(c=>'「'+c+'」').join('、')}。請確認檔案上傳到正確的欄位，且第一列是欄位名稱。`);
+  }
+}
+// 解析平台匯出的報表並檢查必要欄位（只看第一列標題，不受資料列數影響）
+async function parseReport(file, type, suffix='') {
+  const wb = await readWorkbookFromFile(file);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if (!ws || !ws['!ref']) throw new Error(`檔案「${file.name}」是空的，沒有讀到任何內容。`);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  range.e.r = range.s.r;
+  const headers = XLSX.utils.sheet_to_json(ws, {header:1, range:XLSX.utils.encode_range(range), defval:''})[0] || [];
+  assertColumns(headers, file, type, suffix);
+  return XLSX.utils.sheet_to_json(ws, {defval:''});
+}
+// 學員課程紀錄（依註冊時間）：排除「註冊狀態」為「已取消註冊」的紀錄。
+// 在解析後統一過濾，讓註冊總數、月度趨勢、分類、Top 10、部門、指派、自訂清單都用同一批資料。
+// 舊版匯出若沒有「註冊狀態」欄位，則不過濾。
+function excludeCancelledReg(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.filter(r => String(r['註冊狀態']==null?'':r['註冊狀態']).trim() !== '已取消註冊');
+}
 async function parseCustomList(file) {
   // Read first column (A) of Excel, no header row
   const wb = await readWorkbookFromFile(file);
@@ -756,6 +791,7 @@ async function parseCustomList(file) {
       names.push({課程名稱: String(cell.v).trim()});
     }
   }
+  if (!names.length) throw new Error(`課程清單「${file.name}」的 A 欄沒有讀到任何課程名稱。`);
   return names;
 }
 
@@ -813,12 +849,14 @@ function toYYYYMM(val) {
 }
 
 function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
+  // coursesWatchRaw 為 null／undefined 代表沒有上傳「依觀看時間」報表，時數類指標回傳 null（畫面顯示「未提供」）
+  const watchProvided = Array.isArray(coursesWatchRaw);
   // Activation rate
   const nonRemoved = learnersRaw.filter(r => r['員工使用狀態'] !== '已移除' && r['員工使用狀態'] !== '已停用' && r['員工使用狀態'] !== '停用');
   const activated = learnersRaw.filter(r => r['員工使用狀態'] === '啟用');
   const activationRate = nonRemoved.length ? (activated.length / nonRemoved.length * 100).toFixed(1) : '0';
 
-  // 冊課總數：課程紀錄（依註冊時間）筆數
+  // 註冊課程總數：課程紀錄（依註冊時間）筆數（已在解析後排除「已取消註冊」）
   const totalReg = (coursesRaw||[]).length;
   // 完課總數：學員學習記錄加總（維持不變）
   const totalComp = learnersRaw.reduce((s,r)=>s+(Number(r['完成課程數量'])||0),0);
@@ -862,13 +900,14 @@ function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
 
   const learnerRows=learnersRaw.filter(r=>(Number(r['註冊課程數量'])||0)>0);
   const uniqueLearners=learnerRows.length;
-  const totalMin=learnerRows.reduce((s,r)=>s+(Number(r['觀看時間（分）'])||0),0);
-  const avgHrPerLearner=(totalMin/Math.max(uniqueLearners,1)/60).toFixed(1);
   const avgRegPerLearner=(totalReg/Math.max(uniqueLearners,1)).toFixed(1);
   const avgCompPerLearner=(totalComp/Math.max(uniqueLearners,1)).toFixed(1);
 
   // 學習總時數：課程紀錄（依觀看時間）期間觀看時間加總
-  const totalHr = ((coursesWatchRaw||[]).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60).toFixed(1);
+  const totalHrNum = (coursesWatchRaw||[]).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+  const totalHr = watchProvided ? totalHrNum.toFixed(1) : null;
+  // 人均學習時數 = 學習總時數 ÷ 不重複學習人數（與學習總時數同一資料來源）
+  const avgHrPerLearner = watchProvided ? (totalHrNum/Math.max(uniqueLearners,1)).toFixed(1) : null;
 
   const monthlyActivation={};
   learnersRaw.forEach(r => {
@@ -881,7 +920,9 @@ function computeMetrics(learnersRaw, coursesRaw, coursesWatchRaw) {
     activatedCount:activated.length, nonRemovedCount:nonRemoved.length, activationRate,
     totalReg,totalComp,overallCompRate,uniqueLearners,totalHr,
     avgRegPerLearner,avgCompPerLearner,avgHrPerLearner,
-    monthlyReg,monthlyComp,monthlyActivation,catMap,catWatchMap,allCourses
+    monthlyReg,monthlyComp,monthlyActivation,catMap,
+    catWatchMap: watchProvided ? catWatchMap : null,
+    watchProvided, allCourses
   };
 }
 
@@ -1005,7 +1046,7 @@ function getAssignedNames(assignData) {
   return names;
 }
 
-function processCustomList(customListRaw, coursesRaw, coursesWatchRaw) {
+function processCustomList(customListRaw, coursesRaw, coursesWatchRaw, watchProvided=true) {
   // 完全比對課程名稱
   const targetNames = new Set(
     customListRaw.map(r => String(r['課程名稱']||'').trim()).filter(Boolean)
@@ -1013,7 +1054,7 @@ function processCustomList(customListRaw, coursesRaw, coursesWatchRaw) {
   if (targetNames.size === 0) return { courses: [], notFound: [] };
 
   const courseMap = {};
-  coursesRaw.forEach(r => {
+  (coursesRaw||[]).forEach(r => {
     const name = String(r['課程名稱']||'').trim();
     if (!targetNames.has(name)) return;
     if (!courseMap[name]) courseMap[name] = {
@@ -1031,7 +1072,7 @@ function processCustomList(customListRaw, coursesRaw, coursesWatchRaw) {
   });
 
   const courses = Object.values(courseMap)
-    .map(c => ({ ...c, reg: c.emails.size, watchHr: (c.watchMin/60).toFixed(1) }))
+    .map(c => ({ ...c, reg: c.emails.size, watchHr: watchProvided ? (c.watchMin/60).toFixed(1) : null }))
     .sort((a,b) => b.reg - a.reg);
 
   // 清單中有但完全沒人冊課的課程名稱
@@ -1357,7 +1398,7 @@ function renderKPIs(m1, m2, y1label, y2label) {
     const kpis2=[...kpis1];
     if(isOn('f-avgreg')) kpis2.push(kpiCard('人均註冊數',m1.avgRegPerLearner,'堂','以不重複學習人數為分母'));
     if(isOn('f-avgcomp')) kpis2.push(kpiCard('人均完課數',m1.avgCompPerLearner,'堂','以不重複學習人數為分母'));
-    if(isOn('f-avghr')) kpis2.push(kpiCard('人均學習時數',m1.avgHrPerLearner,'hr','以不重複學習人數為分母'));
+    if(isOn('f-avghr')) kpis2.push(kpiCard('人均學習時數',m1.avgHrPerLearner,'hr','學習總時數 ÷ 不重複學習人數'));
     if(kpis2.length) html+=chunkRows(kpis2,3);
   }
   return html;
@@ -1366,24 +1407,26 @@ function renderKPIs(m1, m2, y1label, y2label) {
 function kpiCard(label, val, unit, sub, hl=false) {
   return `<div class="kpi-card${hl?' hl':''}">
     <div class="kpi-lbl">${label}</div>
-    <div class="kpi-val">${val}<span class="u">${unit}</span></div>
+    <div class="kpi-val">${val==null?'<span style="font-size:16px;font-weight:500;color:var(--faint)">未提供</span>':`${val}<span class="u">${unit}</span>`}</div>
     ${sub?`<div class="kpi-sub">${sub}</div>`:''}
   </div>`;
 }
 
 function kpiYoY(label, v1, u1, v2, u2, y1l, y2l) {
-  const delta=deltaLabel(String(v1).replace('%',''), String(v2).replace('%',''));
+  // v1／v2 為 null 代表該年度沒有上傳對應報表：顯示「未提供」且不計算增減
+  const na='<span style="font-size:12px;font-weight:500;color:var(--faint)">未提供</span>';
+  const delta=(v1==null||v2==null)?'':deltaLabel(String(v1).replace('%',''), String(v2).replace('%',''));
   return `<div class="kpi-card">
     <div class="kpi-lbl">${label}</div>
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
       <span style="font-size:11px;color:var(--muted)">${y1l||'第一年'}</span>
-      <span style="font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap">${v1}<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px">${u1}</span></span>
+      <span style="font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap">${v1==null?na:`${v1}<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:2px">${u1}</span>`}</span>
     </div>
     <div style="display:flex;align-items:baseline;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border)">
       <span style="font-size:11px;color:var(--muted)">${y2l||'第二年'}</span>
       <div style="display:flex;align-items:baseline;gap:8px">
         ${delta}
-        <span style="font-size:20px;font-weight:700;color:var(--ink);white-space:nowrap">${v2}<span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:2px">${u2}</span></span>
+        <span style="font-size:20px;font-weight:700;color:var(--ink);white-space:nowrap">${v2==null?na:`${v2}<span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:2px">${u2}</span>`}</span>
       </div>
     </div>
   </div>`;
@@ -1414,10 +1457,14 @@ function renderAssignPies(d) {
   const charts=[
     {label:'註冊堂數', valA:d.regA, valS:d.regS, unit:'筆'},
     {label:'完課堂數', valA:d.compA, valS:d.compS, unit:'筆'},
-    {label:'學習時數', valA:parseFloat(d.hrA), valS:parseFloat(d.hrS), unit:'hr'},
+    {label:'學習時數', valA:parseFloat(d.hrA), valS:parseFloat(d.hrS), unit:'hr', na:d.hrA==null},
   ];
   return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
     ${charts.map(c=>{
+      if(c.na) return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center">
+        <div style="font-size:11px;font-weight:600;color:var(--ink);margin-bottom:10px">${c.label}</div>
+        <div style="padding:30px 0;font-size:12px;color:var(--faint)">未提供<br><span style="font-size:10px">未上傳觀看時間報表</span></div>
+      </div>`;
       const total=(c.valA+c.valS)||1;
       const pctA=Math.round(c.valA/total*100);
       const pctS=100-pctA;
@@ -1451,8 +1498,8 @@ function catTableRows(catMap, catWatchMap, filter) {
     .map(([cat,v])=>{
       const rate=(v.comp/v.total*100).toFixed(1);
       const pc=rate>=85?'pill-g':rate>=70?'pill-t':'pill-a';
-      const watchHr=((catWatchMap[cat]||0)/60).toFixed(0);
-      return `<tr><td><b>${cat}</b></td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr} hr</td></tr>`;
+      const watchHr=catWatchMap?((catWatchMap[cat]||0)/60).toFixed(0)+' hr':'未提供';
+      return `<tr><td><b>${cat}</b></td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr}</td></tr>`;
     }).join('');
 }
 
@@ -1495,9 +1542,9 @@ function renderCatTable(catMap, catWatchMap) {
     return list.map(([cat,v])=>{
       const rate=(v.comp/v.total*100).toFixed(1);
       const pc=rate>=85?'pill-g':rate>=70?'pill-t':'pill-a';
-      const watchHr=((catWatchMap[cat]||0)/60).toFixed(0);
+      const watchHr=catWatchMap?((catWatchMap[cat]||0)/60).toFixed(0)+' hr':'未提供';
       const badge=`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-left:5px;background:${tag==='hahow'?'var(--teal-l)':'var(--amber-l)'};color:${tag==='hahow'?'var(--teal)':'var(--amber)'}">${tag==='hahow'?'Hahow':'企業'}</span>`;
-      return `<tr><td><b>${cat}</b>${badge}</td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr} hr</td></tr>`;
+      return `<tr><td><b>${cat}</b>${badge}</td><td class="r">${v.total}</td><td class="r">${v.comp}</td><td class="r"><span class="pill ${pc}">${rate}%</span></td><td class="r">${watchHr}</td></tr>`;
     }).join('');
   }
   let html=rows(hahow,'hahow');
@@ -1513,7 +1560,13 @@ function renderPies(catMap, catWatchMap) {
   const colors=cats.map((c,i)=>catColor(c,i));
   const regData=cats.map((c,i)=>({label:c,v:catMap[c].total,color:colors[i]}));
   const compData=cats.map((c,i)=>({label:c,v:catMap[c].comp,color:colors[i]}));
-  const watchData=cats.map((c,i)=>({label:c,v:catWatchMap[c]||0,color:colors[i]}));
+  const watchData=catWatchMap?cats.map((c,i)=>({label:c,v:catWatchMap[c]||0,color:colors[i]})):[];
+  function naCard(title) {
+    return `<div class="pie-card">
+      <div class="pie-card-title">${title}</div>
+      <div style="padding:36px 0;font-size:12px;color:var(--faint)">未提供<br><span style="font-size:10px">未上傳觀看時間報表</span></div>
+    </div>`;
+  }
   function pieCard(title, data) {
     const total=data.reduce((s,d)=>s+d.v,0);
     const svg=pieSVG(data,title,colors);
@@ -1527,7 +1580,7 @@ function renderPies(catMap, catWatchMap) {
   return `<div class="pie-row">
     ${pieCard('各分類註冊比例',regData)}
     ${pieCard('各分類完課比例',compData)}
-    ${pieCard('各分類觀看時數比例',watchData)}
+    ${catWatchMap?pieCard('各分類觀看時數比例',watchData):naCard('各分類觀看時數比例')}
   </div>`;
 }
 
@@ -1631,7 +1684,7 @@ function customListRows(courses) {
       <td class="r" style="font-weight:600">${c.reg}</td>
       <td class="r">${c.comp}</td>
       <td class="r"><span class="pill ${pc}">${rate}%</span></td>
-      <td class="r">${c.watchHr} hr</td>
+      <td class="r">${c.watchHr!=null ? c.watchHr+' hr' : '未提供'}</td>
     </tr>`;
   }).join('');
 }
@@ -1770,7 +1823,7 @@ function buildSections(d) {
     }
   }
 
-  
+
   // Top 10
   const showAll=isOn('f-top10all'), showSelf=isOn('f-top10self')&&modules.assign;
   if(showAll||showSelf) {
@@ -1996,29 +2049,32 @@ async function generateReport() {
   showLoading('讀取檔案中…');
   try {
     setStep('解析學員學習記錄…');
-    const learnersRaw=files.learners?await parseXLSX(files.learners):null;
+    const sfx1=modules.yoy?'（年度一）':'';
+    const learnersRaw=files.learners?await parseReport(files.learners,'learners',sfx1):null;
     setStep('解析課程紀錄（註冊時間）…');
-    const coursesRaw=files.courses?await parseXLSX(files.courses):null;
+    // 依註冊時間報表：排除「已取消註冊」
+    const coursesRaw=files.courses?excludeCancelledReg(await parseReport(files.courses,'courses',sfx1)):null;
     setStep('解析課程紀錄（觀看時間）…');
-    const coursesWatchRaw=files.courses_watch?await parseXLSX(files.courses_watch):null;
+    const coursesWatchRaw=files.courses_watch?await parseReport(files.courses_watch,'courses_watch',sfx1):null;
     let learnersRaw2=null,coursesRaw2=null,coursesWatchRaw2=null;
     if(modules.yoy&&files.learners2&&files.courses2){
       setStep('解析第二年度資料…');
-      learnersRaw2=await parseXLSX(files.learners2);
-      coursesRaw2=await parseXLSX(files.courses2);
-      coursesWatchRaw2=files.courses_watch2?await parseXLSX(files.courses_watch2):null;
+      learnersRaw2=await parseReport(files.learners2,'learners','（年度二）');
+      coursesRaw2=excludeCancelledReg(await parseReport(files.courses2,'courses','（年度二）'));
+      coursesWatchRaw2=files.courses_watch2?await parseReport(files.courses_watch2,'courses_watch','（年度二）'):null;
     }
     let assignRaw=[],trafficLine=[],customListRaw=[];
-    if(modules.assign&&files.assign){setStep('解析指派課程報表…');assignRaw=await parseXLSX(files.assign);}
-    if(modules.traffic&&files.traffic_line){setStep('解析在線人數數據…');trafficLine=await parseCSV(files.traffic_line);}
+    if(modules.assign&&files.assign){setStep('解析指派課程報表…');assignRaw=await parseReport(files.assign,'assign');}
+    if(modules.traffic&&files.traffic_line){setStep('解析在線人數數據…');trafficLine=await parseCSV(files.traffic_line);
+      if(!trafficLine.length) throw new Error(`檔案「${files.traffic_line.name}」沒有讀到任何資料列。`);
+      assertColumns(Object.keys(trafficLine[0]),files.traffic_line,'traffic_line');}
     if(modules.customlist&&files.customlist){setStep('解析自選課程清單…');customListRaw=await parseCustomList(files.customlist);}
 
     setStep('計算指標…');
-    const m1=(learnersRaw||coursesRaw)?computeMetrics(learnersRaw||[],coursesRaw||[],coursesWatchRaw||[]):null;
-    const m2=(learnersRaw2||coursesRaw2)?computeMetrics(learnersRaw2||[],coursesRaw2||[],coursesWatchRaw2||coursesWatchRaw||[]):null;
+    const m1=(learnersRaw||coursesRaw)?computeMetrics(learnersRaw||[],coursesRaw||[],coursesWatchRaw):null; // 沒有觀看時間報表時，時數顯示「未提供」
+    const m2=(learnersRaw2||coursesRaw2)?computeMetrics(learnersRaw2||[],coursesRaw2||[],coursesWatchRaw2):null; // 沒有年度二觀看時間報表時，時數顯示「未提供」，不借用年度一
     const deptLevel=modules.dept?Math.max(1,parseInt(document.getElementById('deptLevel')?.value||'1')||1):1;
-    // Merge both years for dept stats so zeroCount covers all accounts
-    // For all analyses except KPI/trend: use Y2 when YoY is on
+    // 年度對比時，除 KPI 卡片與月度趨勢圖外，所有分析模組（含部門分析）一律只用第二年度資料，不合併兩年度
     const primaryCourses = (modules.yoy && coursesRaw2) ? coursesRaw2 : coursesRaw;
     const primaryLearners = (modules.yoy && learnersRaw2) ? learnersRaw2 : learnersRaw;
 
@@ -2029,23 +2085,28 @@ async function generateReport() {
     const topAll=allCoursesY.slice(0,10);
     const topSelf=allCoursesY.filter(c=>!assignedNames.has(String(c.name||'').trim())).slice(0,10);
     const trafficData=modules.traffic?processTraffic(trafficLine,trafficLimit):null;
-    const primaryCoursesWatch=(modules.yoy&&coursesWatchRaw2)?coursesWatchRaw2:coursesWatchRaw;
-    const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses,primaryCoursesWatch):null;
+    // 年度對比時只用第二年度的觀看時間報表；未上傳則時數顯示「未提供」，不退回第一年度（單年度同理）
+    const primaryCoursesWatch=modules.yoy?coursesWatchRaw2:coursesWatchRaw;
+    const primaryWatchProvided=!!primaryCoursesWatch;
+    const customListData=modules.customlist?processCustomList(customListRaw,primaryCourses,primaryCoursesWatch,primaryWatchProvided):null;
 
     // Compute assign vs self split data for pie charts
     let assignSplitData=null;
     if(modules.assign&&assignRaw.length){
       const assignedSet=getAssignedNames(assignRaw);
-      const assignedCourses=primaryCourses.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim()));
-      const selfCourses=primaryCourses.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim()));
+      const pCourses=primaryCourses||[], pWatch=primaryCoursesWatch||[];
+      const assignedCourses=pCourses.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim()));
+      const selfCourses=pCourses.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim()));
       const regA=assignedCourses.length, regS=selfCourses.length;
       const compA=assignedCourses.filter(r=>r['完課狀態']==='已完課').length;
       const compS=selfCourses.filter(r=>r['完課狀態']==='已完課').length;
       // Use 觀看時間報表 for watch time
       // Use assignedSet directly to classify watch time records
-      const hrA=primaryCoursesWatch.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
-      const hrS=primaryCoursesWatch.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
-      assignSplitData={regA,regS,compA,compS,hrA:hrA.toFixed(1),hrS:hrS.toFixed(1)};
+      const hrA=pWatch.filter(r=>assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+      const hrS=pWatch.filter(r=>!assignedSet.has(String(r['課程名稱']||'').trim())).reduce((s,r)=>s+(Number(r['期間觀看時間（分）'])||0),0)/60;
+      assignSplitData={regA,regS,compA,compS,
+        hrA:primaryWatchProvided?hrA.toFixed(1):null,
+        hrS:primaryWatchProvided?hrS.toFixed(1):null};
     }
 
     const insights=null;
